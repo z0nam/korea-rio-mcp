@@ -11,7 +11,9 @@ production / value_added / employment, each ``_in_region`` / ``_out_region``.
 from __future__ import annotations
 
 
-def _row(label: str, in_v: float, out_v: float, unit: str, dec: int = 1) -> str:
+def _row(label: str, in_v, out_v, unit: str, dec: int = 1) -> str:
+    if in_v is None or out_v is None:
+        return f"| {label} | N/A | N/A | N/A | N/A |"
     total = in_v + out_v
     share = (in_v / total * 100) if total else 0.0
     fmt = lambda v: f"{v:,.{dec}f}"

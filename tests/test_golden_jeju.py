@@ -41,3 +41,41 @@ def test_compute_effects_is_multiplier_application(coef):
     df = compute_effects(pd.DataFrame([{"sector_code": "80", "amount_mw": 1000.0}]), coef)
     expected = 1000.0 * coef.loc["80", "multiplier_production_in_region"]
     assert abs(df["production_in_region_mw"].iloc[0] - expected) < 1e-9
+
+
+# --- multiregional 2020 중분류 (all 17 regions) --------------------------- #
+from rio_mcp.store import cache  # noqa: E402
+
+
+def test_bundled_jeju_reproduces_golden():
+    # The bundled 제주 table (built from the multiregional KOSIS workbook) must
+    # reproduce the same P09 figure as the legacy fixture.
+    jeju = load_coefficients(cache.resolve_path("제주", 2020, "중분류(83부문)"))
+    s = summarize(policy_expenditure_effects(jeju, P09))
+    assert round(s["production_in_region_mw"], 4) == 350.3085
+    assert round(s["employment_in_region_persons"], 4) == 2.3885
+
+
+def test_other_region_loads_with_employment_na():
+    # 강원: production/value-added available from the multiregional source,
+    # employment not (no regional employment source yet) -> N/A, not 0.
+    gw = load_coefficients(cache.resolve_path("강원", 2020, "중분류(83부문)"))
+    s = summarize(policy_expenditure_effects(gw, P09))
+    assert s["production_in_region_mw"] > 0
+    assert s["value_added_in_region_mw"] > 0
+    assert s["employment_in_region_persons"] is None
+
+
+def test_seventeen_regions_available():
+    files = {c["file"] for c in cache.list_available()}
+    for region in ["서울", "경기", "부산", "강원", "제주", "세종"]:
+        assert f"induce_coef_{region}_2020_중분류.csv" in files
+
+
+def test_report_handles_na_employment():
+    from rio_mcp.docs.report import render_report
+    results = {"production_in_region_mw": 100.0, "production_out_region_mw": 50.0,
+               "value_added_in_region_mw": 40.0, "value_added_out_region_mw": 20.0,
+               "employment_in_region_persons": None, "employment_out_region_persons": None}
+    md = render_report(results, preset="final")
+    assert "N/A" in md

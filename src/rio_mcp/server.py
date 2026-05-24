@@ -142,12 +142,12 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     # combined
     keys = ["production_in_region_mw", "value_added_in_region_mw", "employment_in_region_persons",
             "production_out_region_mw", "value_added_out_region_mw", "employment_out_region_persons"]
-    combined = {k: 0.0 for k in keys}
-    for part in ("policy_expenditure", "participant"):
-        if part in out:
-            for k in keys:
-                combined[k] += out[part].get(k, 0.0)
-    out["combined"] = {k: round(v, 4) for k, v in combined.items()}
+    combined = {}
+    for k in keys:
+        vals = [out[part].get(k) for part in ("policy_expenditure", "participant") if part in out]
+        # None (e.g. employment with no regional source) propagates as N/A
+        combined[k] = None if any(v is None for v in vals) else round(sum(vals), 4)
+    out["combined"] = combined
     return out
 
 

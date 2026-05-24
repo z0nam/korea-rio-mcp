@@ -162,5 +162,16 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
 
 
 def summarize(df: pd.DataFrame) -> dict:
-    """Aggregate the six effect columns of a compute_effects result."""
-    return {col: round(float(df[col].sum()), 4) for col in _EFFECT_OUT if col in df.columns}
+    """Aggregate the six effect columns of a compute_effects result.
+
+    Uses ``min_count=1`` so a column that is entirely NaN (e.g. employment when
+    the region's coefficient table has no employment data) summarizes to NaN —
+    "not available" — rather than a misleading 0.0.
+    """
+    out = {}
+    for col in _EFFECT_OUT:
+        if col not in df.columns:
+            continue
+        total = df[col].sum(min_count=1)
+        out[col] = None if pd.isna(total) else round(float(total), 4)
+    return out
