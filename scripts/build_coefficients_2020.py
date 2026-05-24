@@ -1,15 +1,16 @@
 """Generate per-region 2020 중분류 coefficient CSVs for all 17 regions.
 
-Reads the KOSIS regional 유발계수 workbooks (생산유발 + 부가가치유발) once each,
-extracts every region's in/out-region coefficients by row-block summation, and
-writes one cache CSV per region. Employment is not in the KOSIS regional set;
-for 제주 it is merged from the existing 26p17 table, others left NaN pending a
-regional employment source.
+Reads the regional 유발계수 workbooks (생산유발 + 부가가치유발 from the KOSIS 지역표
+set, plus the 지역 부속표_고용표 취업유발계수표 sheet) once each, extracts every
+region's in/out-region coefficients by row-block summation, and writes one cache
+CSV per region. All three indicators (production / value-added / employment) come
+from the same multiregional layout; employment validated against 26p17 제주
+(diff ~2e-15). Omit --emp to leave employment NaN.
 
 Usage:
     python scripts/build_coefficients_2020.py \
         --prod <생산유발.xlsx> --va <부가가치유발.xlsx> \
-        [--jeju-employment <induce_coefficients_jeju_medium.csv>] \
+        --emp <2020지역_부속표_고용표_통합중분류.xlsx> \
         --out src/rio_mcp/data/coefficients
 """
 from __future__ import annotations
@@ -49,9 +50,10 @@ def extract_all_regions(grid, metric: str) -> dict[str, pd.DataFrame]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--prod", required=True)
-    ap.add_argument("--va", required=True)
-    ap.add_argument("--jeju-employment", default=None)
+    ap.add_argument("--prod", required=True, help="지역 생산유발계수 xlsx")
+    ap.add_argument("--va", required=True, help="지역 부가가치유발계수 xlsx")
+    ap.add_argument("--emp", default=None, help="지역 부속표_고용표 xlsx (취업유발계수표 시트)")
+    ap.add_argument("--emp-sheet", default="취업유발계수표")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -62,19 +64,15 @@ def main():
     prod = extract_all_regions(_load_grid(args.prod), "production")
     print("loading value-added workbook ...")
     va = extract_all_regions(_load_grid(args.va), "value_added")
-
     emp = None
-    if args.jeju_employment:
-        e = pd.read_csv(args.jeju_employment, dtype={"sector_code": str})
-        e["sector_code"] = e["sector_code"].str.zfill(2)
-        emp = e[["sector_code", "multiplier_employment_jeju", "multiplier_employment_outside"]].rename(columns={
-            "multiplier_employment_jeju": "multiplier_employment_in_region",
-            "multiplier_employment_outside": "multiplier_employment_out_region"})
+    if args.emp:
+        print("loading regional employment workbook ...")
+        emp = extract_all_regions(_load_grid(args.emp, sheet=args.emp_sheet), "employment")
 
     for region in REGIONS_17:
         df = prod[region].merge(va[region].drop(columns=["sector_name"]), on="sector_code")
-        if region == "제주" and emp is not None:
-            df = df.merge(emp, on="sector_code", how="left")
+        if emp is not None:
+            df = df.merge(emp[region].drop(columns=["sector_name"]), on="sector_code")
         for scope in ("in_region", "out_region"):
             col = f"multiplier_employment_{scope}"
             if col not in df.columns:
@@ -88,7 +86,7 @@ def main():
         cls = CLASSIFICATION.split("(")[0]
         path = outdir / f"induce_coef_{region}_{YEAR}_{cls}.csv"
         df.to_csv(path, index=False, encoding="utf-8-sig")
-        emp_state = "with-employment" if region == "제주" and emp is not None else "no-employment"
+        emp_state = "3-indicator" if emp is not None else "no-employment"
         print(f"  {region}: {len(df)} sectors -> {path.name} ({emp_state})")
 
 

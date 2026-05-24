@@ -56,14 +56,22 @@ def test_bundled_jeju_reproduces_golden():
     assert round(s["employment_in_region_persons"], 4) == 2.3885
 
 
-def test_other_region_loads_with_employment_na():
-    # 강원: production/value-added available from the multiregional source,
-    # employment not (no regional employment source yet) -> N/A, not 0.
+def test_other_region_full_three_indicators():
+    # 강원: all three indicators available from the regional 2020 중분류 source
+    # (production + value-added + regional 취업유발계수).
     gw = load_coefficients(cache.resolve_path("강원", 2020, "중분류(83부문)"))
     s = summarize(policy_expenditure_effects(gw, P09))
     assert s["production_in_region_mw"] > 0
     assert s["value_added_in_region_mw"] > 0
-    assert s["employment_in_region_persons"] is None
+    assert s["employment_in_region_persons"] > 0
+
+
+def test_jeju_employment_from_regional_table_matches_legacy():
+    # The bundled 제주 employment now comes from the regional 취업유발계수표;
+    # it must match the legacy fixture's employment figure.
+    jeju = load_coefficients(cache.resolve_path("제주", 2020, "중분류(83부문)"))
+    s = summarize(policy_expenditure_effects(jeju, P09))
+    assert round(s["employment_in_region_persons"], 4) == 2.3885
 
 
 def test_seventeen_regions_available():
