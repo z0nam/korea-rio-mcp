@@ -1,4 +1,4 @@
-"""rio-mcp MCP server (stdio).
+"""korea-rio-mcp MCP server (stdio).
 
 Exposes the RIO engine, BOK base-table acquisition, and standardized
 documentation as MCP tools, plus two prompts for the judgment-heavy steps
@@ -24,7 +24,7 @@ from .store import cache
 from .data_source import bok
 from .docs.report import render_report
 
-mcp = FastMCP("rio-mcp")
+mcp = FastMCP("korea-rio-mcp")
 
 
 def _load(region: str, table_year: int, classification: str) -> pd.DataFrame:

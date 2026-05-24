@@ -22,9 +22,9 @@ def reference_dir() -> Path:
 def cache_dir() -> Path:
     """Writable cache for extracted coefficient tables.
 
-    Override with ``RIO_MCP_CACHE_DIR``; defaults to ``~/.cache/rio-mcp``.
+    Override with ``RIO_MCP_CACHE_DIR``; defaults to ``~/.cache/korea-rio-mcp``.
     """
     base = os.environ.get("RIO_MCP_CACHE_DIR")
-    path = Path(base) if base else Path.home() / ".cache" / "rio-mcp"
+    path = Path(base) if base else Path.home() / ".cache" / "korea-rio-mcp"
     path.mkdir(parents=True, exist_ok=True)
     return path

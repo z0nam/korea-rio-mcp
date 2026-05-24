@@ -44,7 +44,7 @@ def check_update(cached_year: int | None = None) -> dict:
         import httpx
 
         resp = httpx.get(BOK_PUBLICATION_LIST, timeout=15.0,
-                         headers={"User-Agent": "rio-mcp/0.1"})
+                         headers={"User-Agent": "korea-rio-mcp/0.1"})
         resp.raise_for_status()
         fetched = parse_published_years(resp.text)
         source = "bok-live" if fetched else "bok-live-no-match"

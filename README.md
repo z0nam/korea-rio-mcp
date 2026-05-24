@@ -1,4 +1,4 @@
-# rio-mcp
+# korea-rio-mcp
 
 Regional Input-Output (RIO) economic-impact analysis as a **cross-platform MCP server**.
 Computes production / value-added / employment induced effects (split in-region vs
@@ -7,6 +7,11 @@ regional input-output tables. Works with Claude Code, Codex, and Gemini CLI over
 
 Generalized from the 26p17 Seogwipo festival impact study; the Jeju 2020 table ships
 as a validated golden case.
+
+Unlike data-access MCP servers (e.g. OECD-MCP, bcrp-mcp) that fetch published
+statistics, korea-rio-mcp *computes* induced economic effects from regional IO coefficients —
+an open, MCP-native counterpart to commercial tools like IMPLAN, built on Bank of Korea
+regional input-output tables.
 
 ## What it does
 
@@ -21,7 +26,7 @@ as a validated golden case.
 ## Install
 
 ```bash
-pip install -e .        # or: uvx --from . rio-mcp
+pip install -e .        # or: uvx --from . korea-rio-mcp
 ```
 
 Requires Python ≥ 3.10. The Jeju 2020 medium-classification (83-sector) coefficient
@@ -43,14 +48,14 @@ Prompts: `map_budget_to_sectors`, `documentation_standard` — the judgment-heav
 
 ## MCP client config
 
-Run the server with the `rio-mcp` console script (stdio transport).
+Run the server with the `korea-rio-mcp` console script (stdio transport).
 
 **Claude Code** — `.mcp.json` in your project (or `claude mcp add`):
 
 ```json
 {
   "mcpServers": {
-    "rio": { "command": "rio-mcp" }
+    "rio": { "command": "korea-rio-mcp" }
   }
 }
 ```
@@ -59,7 +64,7 @@ Run the server with the `rio-mcp` console script (stdio transport).
 
 ```toml
 [mcp_servers.rio]
-command = "rio-mcp"
+command = "korea-rio-mcp"
 ```
 
 **Gemini CLI** — `~/.gemini/settings.json`:
@@ -67,12 +72,12 @@ command = "rio-mcp"
 ```json
 {
   "mcpServers": {
-    "rio": { "command": "rio-mcp" }
+    "rio": { "command": "korea-rio-mcp" }
   }
 }
 ```
 
-If `rio-mcp` is not on PATH, use the absolute path to the console script (or
+If `korea-rio-mcp` is not on PATH, use the absolute path to the console script (or
 `python -m rio_mcp.server`).
 
 ## Adding a new region

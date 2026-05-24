@@ -1,5 +1,5 @@
 [project]
-name = "rio-mcp"
+name = "korea-rio-mcp"
 version = "0.1.0"
 description = "Regional Input-Output (RIO) economic-impact analysis as a cross-platform MCP server (Bank of Korea regional IO tables)"
 readme = "README.md"
@@ -16,7 +16,7 @@ dependencies = [
 dev = ["pytest>=8.0"]
 
 [project.scripts]
-rio-mcp = "rio_mcp.server:main"
+korea-rio-mcp = "rio_mcp.server:main"
 
 [build-system]
 requires = ["hatchling"]

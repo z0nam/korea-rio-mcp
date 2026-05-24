@@ -1,4 +1,4 @@
-# rio-mcp 진행 상황 (2026-05-25)
+# korea-rio-mcp 진행 상황 (2026-05-25)
 
 지역산업연관분석(RIO)을 **임의 지역에 재사용 가능한 cross-platform MCP 서버**로 일반화하는 프로젝트.
 26p17(서귀포 축제 경제효과) 제주 전용 코드에서 출발 → **전국 17개 시·도 × 3지표**로 확장 완료.
@@ -54,7 +54,7 @@ cross-platform 요구(codex·gemini·claude) 때문에 Claude 전용 skill이 �
 
 ## 4. 데이터 출처 (재현용)
 
-원본 xlsx는 용량이 커서(각 27~31MB) rio-mcp repo에 넣지 않음. **26p17 프로젝트에 보관**, rio-mcp엔 추출된 작은 CSV(17개, 총 ~280KB)만 번들.
+원본 xlsx는 용량이 커서(각 27~31MB) repo에 넣지 않음. **26p17 프로젝트에 보관**, 추출된 작은 CSV(17개, 총 ~280KB)만 번들.
 
 | 자료 | 경로 | 입수 |
 |---|---|---|
@@ -79,7 +79,7 @@ httpx 세션 쿠키로 재현 OK. file_sn: 2=총거래표, 3=총투입계수, 4=
 
 ```
 rio-mcp/
-  pyproject.toml          # mcp, pandas, openpyxl, httpx; entry-point rio-mcp
+  pyproject.toml          # mcp, pandas, openpyxl, httpx; entry-point korea-rio-mcp
   README.md               # 설치 + codex/gemini/claude MCP 설정 스니펫
   STATUS.md               # 이 문서
   scripts/build_coefficients_2020.py   # 17지역 CSV 생성 (원본 xlsx → 계수)
@@ -110,7 +110,7 @@ rio-mcp/
 
 ```bash
 cd /Users/namun/dev/rio-mcp
-pip install -e .            # 또는 uvx --from . rio-mcp
+pip install -e .            # 또는 uvx --from . korea-rio-mcp
 pytest                     # 골든 8개
 
 # 17개 지역 재생성 (원본 xlsx 경로는 26p17 — 위 표 참조)
