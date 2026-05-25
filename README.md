@@ -10,6 +10,9 @@ regional input-output tables. Works with Claude Code, Codex, and Gemini CLI over
 Generalized from the 26p17 Seogwipo festival impact study; the Jeju 2020 table ships
 as a validated golden case.
 
+> 🔰 New to this / not an AI power user? Start with the beginner walkthrough:
+> [ONBOARDING.md](ONBOARDING.md) (Korean, step-by-step).
+
 Unlike data-access MCP servers (e.g. OECD-MCP, bcrp-mcp) that fetch published
 statistics, korea-rio-mcp *computes* induced economic effects from regional IO coefficients —
 an open, MCP-native counterpart to commercial tools like IMPLAN, built on Bank of Korea
