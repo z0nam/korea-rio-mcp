@@ -1,3 +1,5 @@
+**English** | [한국어](README.ko.md)
+
 # korea-rio-mcp
 
 Regional Input-Output (RIO) economic-impact analysis as a **cross-platform MCP server**.
@@ -26,6 +28,10 @@ regional input-output tables.
 ## Install
 
 ```bash
+# From GitHub (recommended for end users):
+uv tool install git+https://github.com/z0nam/korea-rio-mcp
+
+# From a local checkout (development):
 pip install -e .        # or: uvx --from . korea-rio-mcp
 ```
 
@@ -55,15 +61,21 @@ Run the server with the `korea-rio-mcp` console script (stdio transport).
 ```json
 {
   "mcpServers": {
-    "rio": { "command": "korea-rio-mcp" }
+    "korea-rio": { "command": "korea-rio-mcp" }
   }
 }
+```
+
+Or register in one line:
+
+```bash
+claude mcp add korea-rio -- korea-rio-mcp
 ```
 
 **Codex** — `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.rio]
+[mcp_servers.korea_rio]
 command = "korea-rio-mcp"
 ```
 
@@ -72,7 +84,7 @@ command = "korea-rio-mcp"
 ```json
 {
   "mcpServers": {
-    "rio": { "command": "korea-rio-mcp" }
+    "korea-rio": { "command": "korea-rio-mcp" }
   }
 }
 ```
