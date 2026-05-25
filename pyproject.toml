@@ -5,6 +5,22 @@ description = "Regional Input-Output (RIO) economic-impact analysis as a cross-p
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
+authors = [{ name = "Namun Cho", email = "namun.cho@gmail.com" }]
+keywords = [
+    "mcp", "model-context-protocol", "input-output-analysis",
+    "economic-impact", "regional-economics", "bank-of-korea", "korea",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Office/Business :: Financial",
+]
 dependencies = [
     "mcp>=1.2.0",
     "pandas>=2.0",
@@ -14,6 +30,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/z0nam/korea-rio-mcp"
+Repository = "https://github.com/z0nam/korea-rio-mcp"
+Issues = "https://github.com/z0nam/korea-rio-mcp/issues"
 
 [project.scripts]
 korea-rio-mcp = "rio_mcp.server:main"

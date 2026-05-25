@@ -99,3 +99,25 @@ manual download + `rio_load_base_table`.
 ```bash
 pytest    # golden test: reproduces 26p17 Jeju 2020 figures
 ```
+
+## Data source & attribution
+
+The bundled coefficient tables (`data/coefficients/`, `data/reference/`) are
+**derived works** computed from the Bank of Korea (한국은행) regional
+input-output tables (지역산업연관표, 2020 base year), published at the
+[BOK 간행물 listing](https://www.bok.or.kr/portal/singl/newsData/list.do?menuNo=200457).
+
+- **Source: Bank of Korea (한국은행).**
+- These files are **not** the original BOK workbooks — they are induced
+  coefficients (production / value-added / employment, in-region vs
+  out-of-region) extracted and transformed from them.
+- Use of BOK data is subject to the
+  [BOK copyright policy](https://www.bok.or.kr/portal/main/contents.do?menuNo=200228),
+  which requires attribution to the Bank of Korea and disclosure of any
+  modification.
+
+## License
+
+The MIT license (see [`LICENSE`](LICENSE)) covers the **software only**. It does
+**not** extend to the underlying BOK statistical data, whose use is governed by
+the BOK copyright policy linked above.
