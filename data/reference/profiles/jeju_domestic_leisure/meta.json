@@ -1,0 +1,8 @@
+{
+  "label": "제주 · 내국인 · 레저(축제) — 국민여행조사 기반",
+  "region": "제주",
+  "visitor": "domestic",
+  "period_columns": ["jul", "aug", "sep", "oct"],
+  "default_weight": {"jul": 0.25, "aug": 0.25, "sep": 0.25, "oct": 0.25},
+  "source": "제주연구원 새연교 분석보고서 인용 (한국관광공사 「국민여행조사」 추정)"
+}

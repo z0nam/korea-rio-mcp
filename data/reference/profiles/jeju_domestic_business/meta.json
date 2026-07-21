@@ -1,0 +1,20 @@
+{
+  "region": "제주",
+  "period_columns": [
+    "annual"
+  ],
+  "default_weight": {
+    "annual": 1.0
+  },
+  "unit_basis": "per_trip",
+  "survey_year": 2025,
+  "source": "제주특별자치도·제주관광공사(2026), 『2025년 제주특별자치도 방문관광객 실태조사』 분석편 (통계청 승인 제218007호, 조사기간 2025.1~12)",
+  "label": "제주 · 내국인 개별여행객(비즈니스/교육 목적) — 2025 방문관광객 실태조사",
+  "visitor": "domestic",
+  "sample_n": 319,
+  "avg_stay_days": 3.33,
+  "per_capita_total_won": {
+    "annual": 587364
+  },
+  "derivation": "분석편 표 3-56 비즈니스/교육여행 열. MICE 별도 범주 없음 — 비즈니스/교육이 최근접"
+}

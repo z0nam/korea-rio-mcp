@@ -17,8 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .. import _paths
-from . import defaults
+from . import defaults, profiles
 
 _EFFECT_OUT = [
     "production_in_region_mw", "value_added_in_region_mw", "employment_in_region_persons",
@@ -101,23 +100,34 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
                                    apply_overlap_subtraction: bool = False,
                                    festival_match_per_item: dict | None = None,
                                    unit_cost_path: str | Path | None = None,
-                                   industry_map_path: str | Path | None = None) -> pd.DataFrame:
-    """(2b) Outside-visitor ancillary-stay effect (Approach A: KTO unit costs).
+                                   industry_map_path: str | Path | None = None,
+                                   profile: str | None = None,
+                                   group_label: str | None = None) -> pd.DataFrame:
+    """(2b) Outside-visitor ancillary-stay effect (Approach A: survey unit costs).
 
-    n_outsider × purpose_weight = induced visitors; their stay spending uses
-    the bundled KTO unit costs (monthly-weighted) mapped to sectors. Items with
-    sector code 0 (air/sea transport) leak fully out-of-region → amount 0.
-    Pass ``apply_overlap_subtraction=True`` with ``festival_match_per_item`` to
-    net out on-site overlap. Reference CSV paths default to bundled data.
+    n_outsider × purpose_weight = induced visitors; their stay spending uses a
+    unit-cost table (period-weighted) mapped to sectors. Items with sector
+    code 0 (air/sea transport) leak fully out-of-region → amount 0.
+
+    The unit-cost table comes from ``profile`` (a bundled directory under
+    ``data/reference/profiles/``, default ``jeju_domestic_leisure`` = 26p17
+    festival standard); explicit ``unit_cost_path``/``industry_map_path``
+    override it. ``monthly_weight`` keys must match the table's period columns
+    (e.g. ``{"annual": 1.0}`` for single-column tables); when omitted, the
+    profile's ``default_weight`` applies. Pass ``apply_overlap_subtraction=True``
+    with ``festival_match_per_item`` to net out on-site overlap.
     """
-    if monthly_weight is None:
-        monthly_weight = dict(defaults.DEFAULT_MONTHLY_WEIGHT)
     if apply_overlap_subtraction and festival_match_per_item is None:
         raise ValueError("apply_overlap_subtraction=True requires festival_match_per_item dict")
 
-    ref = _paths.reference_dir()
-    unit_cost_path = unit_cost_path or ref / "outsider_stay_spending_unit_cost.csv"
-    industry_map_path = industry_map_path or ref / "outsider_stay_spending_industry_mapping.csv"
+    if unit_cost_path is None or industry_map_path is None:
+        prof = profiles.resolve(profile or profiles.DEFAULT_PROFILE)
+        unit_cost_path = unit_cost_path or prof["unit_cost_path"]
+        industry_map_path = industry_map_path or prof["industry_map_path"]
+        if monthly_weight is None:
+            monthly_weight = prof["meta"].get("default_weight")
+    if monthly_weight is None:
+        monthly_weight = dict(defaults.DEFAULT_MONTHLY_WEIGHT)
 
     unit = pd.read_csv(unit_cost_path)
     smap = pd.read_csv(industry_map_path, dtype={"매핑_부문코드": str})
@@ -130,6 +140,7 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
     unit["weighted_avg_won"] = unit["weighted_avg_won"].round(0).astype(int)
 
     n_eff = n_outsider * purpose_weight
+    label_cols = {"그룹": group_label} if group_label is not None else {}
     rows = []
     for _, r in unit.iterrows():
         item = r["item"]
@@ -138,7 +149,7 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
         sector_code_raw = str(smap_row["매핑_부문코드"]).strip()
 
         if sector_code_raw == "0":
-            rows.append({"stay_item": item, "kto_unit_won": int(kto),
+            rows.append({**label_cols, "stay_item": item, "kto_unit_won": int(kto),
                          "festival_overlap_won": 0, "stay_unit_won": 0,
                          "sector_code": None, "sector_name": "(out-of-region — air/sea)",
                          "n_eff_persons": int(round(n_eff)), "amount_mw": 0.0})
@@ -150,7 +161,7 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
         else:
             festival_unit, stay_unit = 0.0, kto
 
-        rows.append({"stay_item": item, "kto_unit_won": int(kto),
+        rows.append({**label_cols, "stay_item": item, "kto_unit_won": int(kto),
                      "festival_overlap_won": int(festival_unit),
                      "stay_unit_won": int(round(stay_unit)),
                      "sector_code": sector_code_raw.zfill(2),
@@ -159,6 +170,54 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
                      "amount_mw": n_eff * stay_unit / 1_000_000})
 
     return compute_effects(pd.DataFrame(rows), coef)
+
+
+def visitor_group_effects(coef: pd.DataFrame, groups: list[dict],
+                          event_type: str = "festival") -> pd.DataFrame:
+    """(2) Participant channel for heterogeneous visitor groups.
+
+    Runs on-site (2a) and ancillary-stay (2b) effects per group and returns a
+    single frame with a 그룹 label column, so e.g. domestic and foreign
+    attendees each ride their own unit-cost profile and are summed afterwards.
+
+    Each group dict requires ``label`` and ``n``; optional keys ``profile``,
+    ``purpose_weight``, ``per_capita_won``, ``event_site_sector``,
+    ``monthly_weight``, ``unit_cost_path``, ``industry_map_path``,
+    ``include_site``, ``include_stay`` override the ``event_type`` preset
+    (:data:`defaults.EVENT_TYPE_PRESETS`). A preset ``per_capita_won`` of None
+    (forum_mice) skips the on-site channel unless the group sets a value —
+    on-site catering at MICE events is usually already in the organizer budget.
+    """
+    if event_type not in defaults.EVENT_TYPE_PRESETS:
+        raise ValueError(f"Unknown event_type {event_type!r}; "
+                         f"available: {sorted(defaults.EVENT_TYPE_PRESETS)}")
+    preset = defaults.EVENT_TYPE_PRESETS[event_type]
+    frames = []
+    for g in groups:
+        label = g.get("label", "방문객")
+        n = float(g["n"])
+        per_capita = g.get("per_capita_won", preset.get("per_capita_won"))
+        if g.get("include_site", True) and per_capita:
+            frames.append(event_site_effects_standard(
+                coef, n, per_capita_won=int(per_capita),
+                sector_code=str(g.get("event_site_sector",
+                                      preset.get("event_site_sector",
+                                                 defaults.DEFAULT_EVENT_SITE_SECTOR))),
+                group_label=label))
+        if g.get("include_stay", True):
+            frames.append(stay_spending_effects_standard(
+                coef, n,
+                purpose_weight=float(g.get("purpose_weight",
+                                           preset.get("purpose_weight",
+                                                      defaults.DEFAULT_PURPOSE_WEIGHT))),
+                monthly_weight=g.get("monthly_weight"),
+                unit_cost_path=g.get("unit_cost_path"),
+                industry_map_path=g.get("industry_map_path"),
+                profile=g.get("profile", preset.get("profile")),
+                group_label=label))
+    if not frames:
+        return pd.DataFrame(columns=["그룹", *_EFFECT_OUT])
+    return pd.concat(frames, ignore_index=True)
 
 
 def summarize(df: pd.DataFrame) -> dict:

@@ -1,0 +1,20 @@
+{
+  "region": "제주",
+  "period_columns": [
+    "annual"
+  ],
+  "default_weight": {
+    "annual": 1.0
+  },
+  "unit_basis": "per_trip",
+  "survey_year": 2025,
+  "source": "제주특별자치도·제주관광공사(2026), 『2025년 제주특별자치도 방문관광객 실태조사』 분석편 (통계청 승인 제218007호, 조사기간 2025.1~12)",
+  "label": "제주 · 내국인 개별여행객(전 목적) — 2025 방문관광객 실태조사",
+  "visitor": "domestic",
+  "sample_n": 6816,
+  "avg_stay_days": 3.75,
+  "per_capita_total_won": {
+    "annual": 637140
+  },
+  "derivation": "분석편 그림 3-19 개별여행객 1인당 항목별 지출 그대로. 국내 항공/선박료 포함(각주 13) → 부문코드 0"
+}

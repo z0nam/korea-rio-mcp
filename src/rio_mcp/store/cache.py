@@ -6,6 +6,7 @@ with the package (seeded with Jeju 2020). Filenames encode the version key.
 """
 from __future__ import annotations
 
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -54,8 +55,11 @@ def list_available() -> list[dict]:
         if not d.exists():
             continue
         for p in sorted(d.glob("induce_coef_*.csv")):
-            if p.name in seen:
+            # macOS stores filenames NFD; normalize so Korean region names
+            # compare equal across platforms.
+            name = unicodedata.normalize("NFC", p.name)
+            if name in seen:
                 continue
-            seen.add(p.name)
-            out.append({"file": p.name, "source": source, "path": str(p)})
+            seen.add(name)
+            out.append({"file": name, "source": source, "path": str(p)})
     return out

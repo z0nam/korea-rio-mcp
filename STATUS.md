@@ -1,4 +1,4 @@
-# korea-rio-mcp 진행 상황 (2026-05-25)
+# korea-rio-mcp 진행 상황 (2026-07-21)
 
 지역산업연관분석(RIO)을 **임의 지역에 재사용 가능한 cross-platform MCP 서버**로 일반화하는 프로젝트.
 26p17(서귀포 축제 경제효과) 제주 전용 코드에서 출발 → **전국 17개 시·도 × 3지표**로 확장 완료.
@@ -31,7 +31,40 @@ cross-platform 요구(codex·gemini·claude) 때문에 Claude 전용 skill이 �
 - 분류: 통합중분류 **83부문** (26p17과 동일, 부문코드 01~83)
 - 단위: 생산·부가가치 = 원/원, 취업 = 명/10억원
 - git: `0d6b575`(초기) → `1a865f8`(17지역 생산·부가가치) → `9bbade9`(취업 추가, 3지표 완성)
-- 테스트: **pytest 8 passed**
+- 테스트: **pytest 16 passed** (골든 8 + 프로파일/방문객그룹 8)
+
+### 2026-07-21 확장: 소비 프로파일 + 방문객 그룹 (제주포럼 MICE 트랙)
+
+제21회 제주포럼(2026.6, 참가 6,062명 = 내국인 5,371/외국인 691) 파급효과 분석을 위해
+참가자 소비 채널을 일반화. 축제(26p17) 경로는 골든 테스트로 무손상 보증.
+
+- **소비 프로파일**: 단가표를 `data/reference/profiles/<name>/`(unit_cost.csv +
+  industry_mapping.csv + meta.json + SOURCE.md)로 재편. 기간 컬럼 임의(월별 또는
+  `annual` 단일) — meta의 `default_weight`가 기본 가중. 번들 7종:
+  | 프로파일 | 대상 | 출처 |
+  |---|---|---|
+  | `jeju_domestic_leisure` | 내국인 레저(축제) | 국민여행조사(기존 26p17) |
+  | `jeju_domestic_visitor` | 내국인 개별여행객(전 목적) | **2025 제주 방문관광객 실태조사** 그림 3-19 (1차 출처) |
+  | `jeju_domestic_business` | 내국인 비즈니스/교육 목적 | 동일 표 3-56 (n=319) — forum_mice 기본 |
+  | `jeju_foreign_visitor` | 외국인 개별여행객(전 목적) | 동일 그림 4-21 (USD×1,421.9원) |
+  | `jeju_foreign_business` | 외국인 비즈니스/교육 목적 | 동일 표 4-63 (n=86, 소표본 주의) |
+  | `jeju_domestic_mice_kto2016` | 내국인 컨벤션(제주) | KTO 2016 MICE 파급효과 부록-3 (민감도) |
+  | `jeju_foreign_mice_kto2016` | 외국인 컨벤션(제주) | 동일 (민감도) |
+  실태조사 원본 PDF(2024·2025 분석편/통계편)는 과제폴더
+  `99.Reference/외부문헌/02_제주도_제주관광공사/`에 보관. 2025 외래관광객조사
+  마이크로데이터(제주 방문 n=1,214 재집계)는 `30.data/20260721_외래관광객조사_원자료_제주재집계.md` 참조.
+- **visitor_groups**: `effects.visitor_group_effects()` / `rio_compute_event`의
+  `event_spec.visitor_groups` — 그룹(내/외국인)별로 다른 프로파일·파라미터를 태워 합산,
+  그룹별 요약(`participant_by_group`) 반환.
+- **event_type 프리셋**: `defaults.EVENT_TYPE_PRESETS` — `festival`(기존 디폴트와 동일),
+  `forum_mice`(purpose_weight 1.0, 현장소비 채널 기본 OFF: 주최측 예산의 케이터링과
+  이중계상 방지, per_capita_won 명시 시에만 ON).
+- **MCP 도구 추가**: `rio_list_profiles`.
+- **주의(분석자 판단 사항)**: 초청 인사의 숙박·항공은 예산 채널(초청경비)에 이미 있음 →
+  해당 인원의 체류소비 숙박 항목 이중계상 보정 필요. 도민 비중·연인원→고유인원 환산은
+  엔진 밖(호출부)에서 n에 반영. 외국인 visitor 단가는 평균 체류 6.72일 전제의 여행 1회당
+  값이라 2박3일 행사엔 과대 가능(SOURCE.md 참조).
+- macOS NFD 파일명 이슈 픽스: `cache.list_available()`가 NFC 정규화해 반환.
 
 ---
 

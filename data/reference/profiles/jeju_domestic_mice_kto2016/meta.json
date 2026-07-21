@@ -1,0 +1,17 @@
+{
+  "label": "제주 · 내국인 컨벤션 참가자 — KTO 2016 MICE 파급효과 부록 (등록비·국제항공료 제외)",
+  "region": "제주",
+  "visitor": "domestic",
+  "period_columns": [
+    "avg"
+  ],
+  "default_weight": {
+    "avg": 1.0
+  },
+  "unit_basis": "per_event",
+  "per_capita_total_won": {
+    "avg": 1072312
+  },
+  "source": "한국관광공사(2018) 『2016 MICE 산업의 경제적 파급효과 분석』 부록 표 부록-3 제주 컨벤션 (내국인 2014~2016 평균)",
+  "derivation": "표 부록-3 제주 Convention 1인당 항목별 소비지출 그대로 (2016년 기준, 참가자조사 M/C 미구분으로 전국 M/C 비율 적용 추정값)"
+}

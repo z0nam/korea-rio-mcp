@@ -1,0 +1,19 @@
+{
+  "region": "제주",
+  "period_columns": [
+    "annual"
+  ],
+  "default_weight": {
+    "annual": 1.0
+  },
+  "unit_basis": "per_trip",
+  "survey_year": 2025,
+  "source": "제주특별자치도·제주관광공사(2026), 『2025년 제주특별자치도 방문관광객 실태조사』 분석편 (통계청 승인 제218007호, 조사기간 2025.1~12)",
+  "label": "제주 · 외국인 개별여행객(전 목적) — 2025 방문관광객 실태조사",
+  "visitor": "foreign",
+  "sample_n": 3406,
+  "avg_stay_days": 4.79,
+  "fx_krw_per_usd": 1421.9,
+  "per_capita_total_usd": 900.32,
+  "derivation": "분석편 그림 4-21 (USD) × 2025 연평균 환율 1,421.9원. 국제+국내 항공료 포함(각주 21) → 부문코드 0"
+}

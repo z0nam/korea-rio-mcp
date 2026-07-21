@@ -12,13 +12,14 @@ from typing import Any
 import pandas as pd
 from mcp.server.fastmcp import FastMCP
 
-from .engine import defaults
+from .engine import defaults, profiles
 from .engine.coefficients import load_coefficients
 from .engine.effects import (
     compute_effects,
     event_site_effects_standard,
     stay_spending_effects_standard,
     summarize,
+    visitor_group_effects,
 )
 from .store import cache
 from .data_source import bok
@@ -38,6 +39,15 @@ def _load(region: str, table_year: int, classification: str) -> pd.DataFrame:
 def rio_list_coefficients() -> list[dict]:
     """List coefficient tables available (cached or bundled)."""
     return cache.list_available()
+
+
+@mcp.tool()
+def rio_list_profiles() -> list[dict]:
+    """List bundled stay-spending consumption profiles (visitor-type unit-cost
+    tables: e.g. jeju_domestic_leisure for festivals, jeju_domestic_visitor /
+    jeju_foreign_visitor for MICE/forum attendees). Each entry names its data
+    source; details in data/reference/profiles/<name>/SOURCE.md."""
+    return profiles.list_profiles()
 
 
 @mcp.tool()
@@ -100,14 +110,24 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
 
     ``event_spec`` keys:
       * ``policy_spending``: list of {sector_code, amount_mw, vendor_in_region_share?}
-      * ``n_outsider``: outside-visitor count (drives visitor channels)
+      * ``event_type`` (opt, default "festival"): preset for participant
+        parameters — "festival" (26p17) or "forum_mice" (MICE/국제행사:
+        purpose_weight 1.0, on-site channel off by default to avoid double
+        counting organizer-paid catering).
+      * ``visitor_groups`` (opt): list of {label, n, profile?, purpose_weight?,
+        per_capita_won?, event_site_sector?, monthly_weight?} — heterogeneous
+        groups (e.g. domestic vs foreign attendees) each riding their own
+        unit-cost profile (see rio_list_profiles). Takes precedence over
+        ``n_outsider``.
+      * ``n_outsider``: outside-visitor count (legacy single-track channel)
       * ``per_capita_won`` (opt), ``event_site_sector`` (opt) — on-site consumption
       * ``purpose_weight`` (opt), ``monthly_weight`` (opt) — ancillary stay
       * ``include_stay`` (opt, default True)
 
     Returns separate summaries for the policy-expenditure channel (reliable,
     homogeneous) and the participant channel (variable), kept apart per the
-    26p17 methodology, plus a combined total.
+    26p17 methodology, plus a combined total (and per-group summaries when
+    visitor_groups is used).
     """
     coef = _load(region, table_year, classification)
     out: dict[str, Any] = {"region": region, "table_year": table_year}
@@ -120,8 +140,16 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
         out["policy_expenditure"] = summarize(compute_effects(pd.DataFrame(rows), coef))
 
     participant_frames = []
+    visitor_groups = event_spec.get("visitor_groups")
     n_outsider = event_spec.get("n_outsider")
-    if n_outsider:
+    if visitor_groups:
+        part_df = visitor_group_effects(coef, visitor_groups,
+                                        event_type=event_spec.get("event_type", "festival"))
+        participant_frames.append(part_df)
+        out["participant_by_group"] = {
+            str(label): summarize(sub) for label, sub in part_df.groupby("그룹")
+        }
+    elif n_outsider:
         ese = event_site_effects_standard(
             coef, n_outsider=float(n_outsider),
             per_capita_won=int(event_spec.get("per_capita_won", defaults.DEFAULT_PER_CAPITA_WON)),
