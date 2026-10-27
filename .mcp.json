@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "korea-rio": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "--with",
+        "mcp<2",
+        "korea-rio-mcp"
+      ]
+    }
+  }
+}

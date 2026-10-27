@@ -1,0 +1,10 @@
+{
+  "name": "korea-rio-mcp",
+  "displayName": "지역산업연관분석 (korea-rio-mcp)",
+  "description": "한국은행 지역산업연관표 기반으로 경제적 파급효과(생산·부가가치·취업·고용)를 분석·산출한다.",
+  "author": { "name": "Namun Cho", "email": "namun.cho@gmail.com", "url": "https://github.com/z0nam" },
+  "homepage": "https://github.com/z0nam/korea-rio-mcp",
+  "repository": "https://github.com/z0nam/korea-rio-mcp",
+  "license": "MIT",
+  "keywords": ["mcp", "input-output-analysis", "economic-impact", "regional-economics", "bank-of-korea", "산업연관", "경제파급효과"]
+}
