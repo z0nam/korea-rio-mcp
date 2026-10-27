@@ -3,6 +3,8 @@
     "korea-rio": {
       "command": "uvx",
       "args": [
+        "--python",
+        "3.12",
         "--from",
         "${CLAUDE_PLUGIN_ROOT}",
         "--with",
