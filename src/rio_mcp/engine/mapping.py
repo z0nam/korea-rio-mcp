@@ -43,6 +43,7 @@ ALIASES = {
     "근거및매핑이유": "rationale",
     "근거": "rationale",
     "신뢰도": "confidence",
+    "디플레이터": "deflator",
 }
 
 _YES = {"y", "yes", "예", "o"}
@@ -138,6 +139,25 @@ def prepare_spending(spending: list[dict]) -> tuple[pd.DataFrame, list[dict]]:
     df = pd.DataFrame(rows, columns=["line_id", "item", "sector_code", "sector_name",
                                      "amount_mw"])[cols]
     return df, excluded
+
+
+def line_deflators(spending: list[dict], default: float | None = None) -> list[float | None]:
+    """Per-line deflators aligned with :func:`prepare_spending`'s output rows.
+
+    A row's own ``deflator`` (alias 디플레이터) overrides ``default``. Invalid
+    values (≤ 0, non-finite, non-numeric) raise ValueError. effect_yn N rows
+    are skipped, exactly as prepare_spending does.
+    """
+    from .price import validate_deflator
+
+    out = []
+    for i, raw in enumerate(spending):
+        r = canonicalize(raw)
+        if normalize_effect_yn(r.get("effect_yn")) == "N":
+            continue
+        own = validate_deflator(r.get("deflator"), where=f"spending[{i}]")
+        out.append(own if own is not None else default)
+    return out
 
 
 def _unit_problem(amt: float) -> str | None:
