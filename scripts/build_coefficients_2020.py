@@ -7,11 +7,18 @@ CSV per region. All three indicators (production / value-added / employment) com
 from the same multiregional layout; employment validated against 26p17 제주
 (diff ~2e-15). Omit --emp to leave employment NaN.
 
+``--classification`` (default 중분류(83부문)) labels the output and its filename,
+e.g. ``대분류(33부문)`` or ``소분류(165부문)`` when the workbooks are of that
+classification. Sector codes are kept as the workbook gives them: numeric codes
+are zero-padded to two digits (01, 52 — unchanged for 중분류), while letter codes
+such as ``A`` or ``C01`` are preserved verbatim (no ``0A``).
+
 Usage:
     python scripts/build_coefficients_2020.py \
         --prod <생산유발.xlsx> --va <부가가치유발.xlsx> \
         --emp <2020지역_부속표_고용표_통합중분류.xlsx> \
-        --out src/rio_mcp/data/coefficients
+        --out src/rio_mcp/data/coefficients \
+        [--classification "대분류(33부문)"] [--year 2020]
 """
 from __future__ import annotations
 
@@ -28,6 +35,7 @@ from rio_mcp.engine.multiregional import (  # noqa: E402
 
 YEAR = 2020
 CLASSIFICATION = "중분류(83부문)"
+CLASSIFICATION_CHOICES = ("대분류", "중분류", "소분류")
 
 
 def extract_all_regions(grid, metric: str) -> dict[str, pd.DataFrame]:
@@ -55,7 +63,14 @@ def main():
     ap.add_argument("--emp", default=None, help="지역 부속표_고용표 xlsx (취업유발계수표 시트)")
     ap.add_argument("--emp-sheet", default="취업유발계수표")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--classification", default=CLASSIFICATION,
+                    help='분류 라벨, 예: "대분류(33부문)", "중분류(83부문)", "소분류(165부문)"')
+    ap.add_argument("--year", type=int, default=YEAR, help="표 기준연도 (기본 2020)")
     args = ap.parse_args()
+    cls = args.classification.split("(")[0].strip()
+    if cls not in CLASSIFICATION_CHOICES:
+        ap.error(f"--classification must start with one of {CLASSIFICATION_CHOICES}, "
+                 f"got {args.classification!r}")
 
     outdir = Path(args.out)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -81,10 +96,9 @@ def main():
         df["unit_value_added"] = "원/원"
         df["unit_employment"] = "명/10억원"
         df["region"] = region
-        df["table_year"] = YEAR
-        df["classification"] = CLASSIFICATION
-        cls = CLASSIFICATION.split("(")[0]
-        path = outdir / f"induce_coef_{region}_{YEAR}_{cls}.csv"
+        df["table_year"] = args.year
+        df["classification"] = args.classification
+        path = outdir / f"induce_coef_{region}_{args.year}_{cls}.csv"
         df.to_csv(path, index=False, encoding="utf-8-sig")
         emp_state = "3-indicator" if emp is not None else "no-employment"
         print(f"  {region}: {len(df)} sectors -> {path.name} ({emp_state})")

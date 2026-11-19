@@ -20,7 +20,7 @@ except ImportError:  # mcp<2
 
 from .engine import defaults, profiles
 from .engine.coefficients import load_coefficients, load_sectors
-from .engine.mapping import crosscheck_mapping, prepare_spending
+from .engine.mapping import crosscheck_mapping, input_assumptions, prepare_spending
 from .engine.effects import (
     UnmatchedSectorError,
     compute_effects,
@@ -165,9 +165,16 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
     zero amount is treated as an intended zero and not reported. With
     ``strict=True`` an unmatched code raises an error instead. Valid codes:
     rio_list_sectors.
+    Input checks: ``assumptions`` (a list of {code, message, ...}) records
+    defaults applied — ``default_vendor_share`` with ``n_lines`` when rows
+    omit vendor_in_region_share ("역내 조달 비율을 지정하지 않아 100%로 가정함");
+    ``warnings`` repeats it with the line count and flags single lines whose
+    amount is > 10조 원 (10,000,000 백만원) or 0 < amount < 1 백만원 as a
+    possible unit error (amount_mw is in 백만 원).
     """
     coef = _load(region, table_year, classification)
     df_in, excluded = prepare_spending(spending)
+    assumptions, input_warnings = input_assumptions(spending)
     unmatched = _check(df_in, coef, strict)
     df = compute_effects(df_in, coef)
     return {
@@ -176,7 +183,8 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
         "totals": summarize(df),
         "excluded_lines": excluded,
         "unmatched_sectors": unmatched,
-        "warnings": unmatched_warnings(unmatched),
+        "assumptions": assumptions,
+        "warnings": input_warnings + unmatched_warnings(unmatched),
     }
 
 
@@ -212,15 +220,25 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     non-zero amounts whose sector_code is not in the table (counted as 0);
     intended zeros (null code, e.g. a profile's air/sea items, or amount 0)
     are not reported. ``strict=True`` raises on any unmatched code instead.
+    Input checks: ``assumptions`` (a list of {code, message, ...}) records
+    defaults applied — ``default_vendor_share`` with ``n_lines`` when policy_spending rows
+    omit vendor_in_region_share ("역내 조달 비율을 지정하지 않아 100%로 가정함");
+    ``warnings`` repeats it with the line count and flags single lines whose
+    amount is > 10조 원 (10,000,000 백만원) or 0 < amount < 1 백만원 as a
+    possible unit error (amount_mw is in 백만 원). Policy-channel entries carry
+    ``channel``.
     """
     coef = _load(region, table_year, classification)
     out: dict[str, Any] = {"region": region, "table_year": table_year}
     unmatched: list[dict] = []
+    assumptions: list[dict] = []
+    input_warnings: list[str] = []
     out["excluded_lines"] = []
 
     policy = event_spec.get("policy_spending") or []
     if policy:
         pol_df, out["excluded_lines"] = prepare_spending(policy)
+        assumptions, input_warnings = input_assumptions(policy, channel="policy_expenditure")
         unmatched += _check(pol_df, coef, strict, channel="policy_expenditure")
         out["policy_expenditure"] = summarize(compute_effects(pol_df, coef))
 
@@ -263,7 +281,8 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
         combined[k] = None if any(v is None for v in vals) else round(sum(vals), 4)
     out["combined"] = combined
     out["unmatched_sectors"] = unmatched
-    out["warnings"] = unmatched_warnings(unmatched)
+    out["assumptions"] = assumptions
+    out["warnings"] = input_warnings + unmatched_warnings(unmatched)
     return out
 
 
@@ -293,10 +312,12 @@ def map_budget_to_sectors(budget_items: str = "") -> str:
         "(83-sector) input-output codes for a regional economic-impact analysis.\n\n"
         "For each line item, decide:\n"
         "1. The single best sector code (e.g. 80 스포츠·오락, 58 음식점·숙박, "
-        "52 도소매, 74 사업지원, 15 인쇄·미디어, 73 장비임대).\n"
+        "52 도소매, 74 사업지원, 15 인쇄·미디어, 73 장비임대). Confirm every code "
+        "against rio_list_sectors(region, table_year) — do not guess codes.\n"
         "2. effect_yn: Y if it generates real local production demand, N if it is "
         "a transfer/reserve/non-demand item.\n"
-        "3. vendor_in_region_share (0–1): the share procured from in-region vendors.\n"
+        "3. vendor_in_region_share (0–1): the share procured from in-region vendors. "
+        "Always fill it; if omitted the tools assume 1.0 (100%) and warn.\n"
         "4. A one-line rationale and a confidence (상/중/하).\n\n"
         "Output the table as a list of rows with exactly these keys: line_id, item "
         "(예산항목), detail (세부내역), sector_code, sector_name, amount_mw "

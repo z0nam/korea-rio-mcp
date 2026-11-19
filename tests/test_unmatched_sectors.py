@@ -19,6 +19,11 @@ from rio_mcp.store import cache
 JEJU = ("제주", 2020, "중분류(83부문)")
 
 
+def _unmatched_warnings(res):
+    # #17 added input-check warnings (default vendor share, unit); count only #7's.
+    return [w for w in res["warnings"] if "계수표에 없어" in w]
+
+
 @pytest.fixture(scope="module")
 def coef():
     return load_coefficients(cache.resolve_path(*JEJU))
@@ -58,12 +63,14 @@ def test_tool_compute_effects_reports_unmatched():
     ])
     assert res["unmatched_sectors"] == [
         {"sector_code": "99", "sector_name": "", "amount_mw": 25.0}]
-    assert len(res["warnings"]) == 1 and "99" in res["warnings"][0]
+    uw = _unmatched_warnings(res)
+    assert len(uw) == 1 and "99" in uw[0]
     assert res["totals"]["production_in_region_mw"] > 0
 
 
 def test_tool_compute_effects_clean_has_empty_lists():
-    res = server.rio_compute_effects(*JEJU[:2], spending=[{"sector_code": "80", "amount_mw": 1.0}])
+    res = server.rio_compute_effects(*JEJU[:2], spending=[
+        {"sector_code": "80", "amount_mw": 1.0, "vendor_in_region_share": 1.0}])
     assert res["unmatched_sectors"] == [] and res["warnings"] == []
 
 
@@ -82,7 +89,7 @@ def test_tool_compute_event_tags_channel():
     })
     by_channel = {(u["channel"], u["sector_code"]) for u in res["unmatched_sectors"]}
     assert by_channel == {("policy_expenditure", "999"), ("participant", "00")}
-    assert len(res["warnings"]) == 2
+    assert len(_unmatched_warnings(res)) == 2
 
 
 def test_tool_compute_event_default_stay_is_clean():
