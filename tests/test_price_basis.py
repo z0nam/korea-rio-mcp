@@ -194,3 +194,23 @@ def test_report_default_assumption_without_input():
     md = server.rio_render_report({"production_in_region_mw": 1.0, "production_out_region_mw": 1.0},
                                   table_year=2020)
     assert "- 가정: 금액을 2020년(표 기준연도) 불변가격으로 간주함" in md
+
+
+def test_duplicate_group_labels_with_different_deflators_rejected():
+    groups = [{"label": "방문객", "n": 500, "deflator": 1.1},
+              {"label": "방문객", "n": 100}]  # second has none → must not inherit 1.1
+    with pytest.raises(ValueError, match="shared with another group"):
+        server.rio_compute_event(*JEJU, price_basis="nominal",
+                                 event_spec={"visitor_groups": groups})
+    groups[1]["deflator"] = 1.2
+    with pytest.raises(ValueError, match="shared with another group"):
+        server.rio_compute_event(*JEJU, price_basis="nominal",
+                                 event_spec={"visitor_groups": groups})
+
+
+def test_duplicate_group_labels_same_deflator_ok():
+    groups = [{"label": "방문객", "n": 500, "deflator": 1.1},
+              {"label": "방문객", "n": 100, "deflator": 1.1}]
+    res = server.rio_compute_event(*JEJU, price_basis="nominal",
+                                   event_spec={"visitor_groups": groups})
+    assert res["participant"]["employment_in_region_persons"] is not None

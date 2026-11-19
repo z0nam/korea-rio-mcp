@@ -349,7 +349,16 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
         preset = defaults.EVENT_TYPE_PRESETS.get(event_type, {})
         for gi, g in enumerate(visitor_groups):
             gd = price.validate_deflator(g.get("deflator"), where=f"visitor_groups[{gi}]")
-            group_defl[str(g.get("label", "방문객"))] = gd if gd is not None else part_defl
+            label = str(g.get("label", "방문객"))
+            resolved = gd if gd is not None else part_defl
+            # Deflators are applied per label after the group frames are combined,
+            # so groups sharing a label must resolve to the same deflator.
+            if nominal and label in group_defl and group_defl[label] != resolved:
+                raise ValueError(
+                    f"visitor_groups[{gi}]: label {label!r} is shared with another group "
+                    f"but its deflator differs ({group_defl[label]!r} vs {resolved!r}); "
+                    "give each group a unique label or the same deflator")
+            group_defl[label] = resolved
             any_deflator = any_deflator or gd is not None
             if g.get("include_stay", True) and not (g.get("unit_cost_path") and g.get("industry_map_path")):
                 used_profiles.append(g.get("profile", preset.get("profile")) or profiles.DEFAULT_PROFILE)
