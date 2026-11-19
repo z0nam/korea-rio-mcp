@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import defaults, profiles
+from .coefficients import normalize_sector_code
 
 _EFFECT_OUT = [
     "production_in_region_mw", "value_added_in_region_mw", "employment_in_region_persons",
@@ -38,13 +39,8 @@ class UnmatchedSectorError(ValueError):
 
 
 def _norm_code(sc_raw) -> str | None:
-    """Normalize a sector code to the table's zero-padded form; None if blank."""
-    if sc_raw is None or (not isinstance(sc_raw, str) and pd.isna(sc_raw)):
-        return None
-    s = str(sc_raw).strip()
-    if s in ("", "nan", "None"):
-        return None
-    return s.split(".")[0].zfill(2)
+    """Normalize a sector code to the table's form; None if blank."""
+    return normalize_sector_code(sc_raw)
 
 
 def find_unmatched_sectors(df_amount: pd.DataFrame, coef: pd.DataFrame) -> list[dict]:
@@ -128,9 +124,7 @@ def policy_expenditure_effects(coef: pd.DataFrame, spend_map_path: str | Path) -
 
     sm = pd.read_csv(spend_map_path, dtype={"매핑_부문코드": str})
     sm = sm[sm["효과여부"].map(normalize_effect_yn) == "Y"].copy()
-    sm["sector_code"] = sm["매핑_부문코드"].apply(
-        lambda x: str(x).split(".")[0].zfill(2) if pd.notna(x) and str(x) != "nan" else None
-    )
+    sm["sector_code"] = sm["매핑_부문코드"].map(normalize_sector_code)
     capture = sm["vendor_jeju_share"] if "vendor_jeju_share" in sm.columns else sm.get("vendor_in_region_share", 1.0)
     sm["amount_mw"] = sm["추정금액_백만원"].astype(float) * pd.to_numeric(capture).astype(float)
     df = sm[["line_id", "예산항목", "세부내역", "sector_code", "매핑_부문명",
@@ -230,7 +224,7 @@ def stay_spending_effects_standard(coef: pd.DataFrame, n_outsider: float,
         rows.append({**label_cols, "stay_item": item, "kto_unit_won": int(kto),
                      "festival_overlap_won": int(festival_unit),
                      "stay_unit_won": int(round(stay_unit)),
-                     "sector_code": sector_code_raw.zfill(2),
+                     "sector_code": normalize_sector_code(sector_code_raw),
                      "sector_name": smap_row["매핑_부문명"],
                      "n_eff_persons": int(round(n_eff)),
                      "amount_mw": n_eff * stay_unit / 1_000_000})

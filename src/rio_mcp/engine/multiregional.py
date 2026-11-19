@@ -22,6 +22,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .coefficients import normalize_sector_code
+
 # 17 regions as labelled in the workbooks (row/column label column).
 REGIONS_17 = [
     "서울", "인천", "경기", "대전", "세종", "충북", "충남", "광주", "전북",
@@ -64,7 +66,7 @@ def _index_blocks(grid: list[list]):
             code = code_row[c] if c < len(code_row) else None
             name = name_row[c] if c < len(name_row) else None
             if code is not None:
-                sector_meta[c] = (str(code).zfill(2), name)
+                sector_meta[c] = (normalize_sector_code(code), name)
 
     row_blocks: dict[str, list[int]] = {}
     for i, r in enumerate(grid):

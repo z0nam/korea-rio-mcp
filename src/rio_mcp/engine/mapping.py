@@ -33,6 +33,8 @@ ALIASES = {
     "매핑_부문명": "sector_name",
     "부문명": "sector_name",
     "추정금액_백만원": "amount_mw",
+    "금액_백만원": "amount_mw",
+    "금액": "amount_mw",
     "효과여부": "effect_yn",
     "vendor_jeju_share": "vendor_in_region_share",
     "역내조달비율": "vendor_in_region_share",
@@ -48,6 +50,13 @@ _NO = {"n", "no", "아니오", "아니요", "x"}
 
 # Gap (백만원) between budget_total_mw and the mapped total tolerated as rounding.
 BUDGET_TOLERANCE_MW = 0.01
+
+# Single-line amounts outside this range (백만원) are probably in the wrong unit:
+# > 10조 원 (e.g. 원 entered as 백만원) or 0 < amount < 1백만 원 (e.g. 억원/천원 slips).
+AMOUNT_MAX_MW = 10_000_000.0
+AMOUNT_MIN_MW = 1.0
+
+DEFAULT_SHARE_MESSAGE = "역내 조달 비율을 지정하지 않아 100%로 가정함"
 
 
 def _blank(v: Any) -> bool:
@@ -131,6 +140,56 @@ def prepare_spending(spending: list[dict]) -> tuple[pd.DataFrame, list[dict]]:
     return df, excluded
 
 
+def _unit_problem(amt: float) -> str | None:
+    if amt > AMOUNT_MAX_MW:
+        return "10조 원 초과"
+    if 0 < amt < AMOUNT_MIN_MW:
+        return "1백만 원 미만"
+    return None
+
+
+def input_assumptions(spending: list[dict],
+                      channel: str | None = None) -> tuple[list[dict], list[str]]:
+    """Assumptions and unit warnings for spending rows (effect_yn N rows skipped).
+
+    Returns ``(assumptions, warnings)``. ``assumptions`` is a list of dicts
+    ``{code, message, ...}`` so further assumptions (e.g. price basis, #6) can
+    be appended; here it holds ``default_vendor_share`` when any counted row
+    lacks ``vendor_in_region_share`` (``n_lines`` and, if given, ``line_ids``).
+    ``warnings`` adds that message with the line count, plus one unit-check
+    warning per line whose amount is > 10조 원 or 0 < amount < 1백만 원.
+    Call after :func:`prepare_spending` (which rejects malformed rows).
+    """
+    assumptions, warnings = [], []
+    missing_share, line_ids = 0, []
+    prefix = f"[{channel}] " if channel else ""
+    for i, raw in enumerate(spending):
+        r = canonicalize(raw)
+        if normalize_effect_yn(r.get("effect_yn")) == "N":
+            continue
+        lid = None if _blank(r.get("line_id")) else r.get("line_id")
+        if _blank(r.get("vendor_in_region_share")):
+            missing_share += 1
+            if lid is not None:
+                line_ids.append(lid)
+        amt = float(r["amount_mw"])
+        prob = _unit_problem(amt)
+        if prob:
+            where = f"spending[{i}]" + (f" (line_id {lid})" if lid is not None else "")
+            warnings.append(f"{prefix}{where} 금액 {amt:,.6g}백만원이 {prob} — "
+                            "금액 단위(백만 원)를 확인할 것")
+    if missing_share:
+        a = {"code": "default_vendor_share", "message": DEFAULT_SHARE_MESSAGE,
+             "n_lines": missing_share}
+        if line_ids:
+            a["line_ids"] = line_ids
+        if channel:
+            a["channel"] = channel
+        assumptions.append(a)
+        warnings.insert(0, f"{prefix}{DEFAULT_SHARE_MESSAGE} ({missing_share}줄)")
+    return assumptions, warnings
+
+
 def crosscheck_mapping(mapping: list[dict], coef: pd.DataFrame,
                        budget_total_mw: float | None = None) -> dict:
     """Check a mapping table without computing effects.
@@ -141,7 +200,8 @@ def crosscheck_mapping(mapping: list[dict], coef: pd.DataFrame,
     duplicate_line_id, budget_mismatch (|budget_total_mw − mapped total| >
     :data:`BUDGET_TOLERANCE_MW`). ``unmatched_sectors`` (Y rows whose code is
     not in ``coef``) also make ``ok`` false. ``notes`` are informational:
-    missing_share (1.0 applied), missing_effect_yn (Y assumed).
+    missing_share (1.0 applied), missing_effect_yn (Y assumed),
+    amount_unit_suspect (> 10조 원 or 0 < amount < 1백만 원).
     """
     issues, notes = [], []
     y_rows = []  # for unmatched check
@@ -184,6 +244,10 @@ def crosscheck_mapping(mapping: list[dict], coef: pd.DataFrame,
             continue
         if amt < 0:
             add(issues, i, r, "negative_amount", f"amount_mw negative: {amt:g}")
+        prob = _unit_problem(amt)
+        if prob:
+            add(notes, i, r, "amount_unit_suspect",
+                f"amount_mw {amt:,.6g} is {prob} — check the unit (백만 원)")
         tot["all"] += amt
         tot[flag] += amt
         if flag == "N":

@@ -14,11 +14,35 @@ Units: production / value-added = 원/원; employment = 명/10억원.
 """
 from __future__ import annotations
 
+import math
+import re
 from pathlib import Path
 
 import pandas as pd
 
 from .regions import RegionTableLayout
+
+_NUMERIC_CODE = re.compile(r"\d+(\.\d*)?")
+
+
+def normalize_sector_code(raw) -> str | None:
+    """Canonical sector code: numeric codes zero-padded to 2 digits, others kept.
+
+    ``80``/``"80"``/``80.0``/``"8"`` → ``"80"``/``"80"``/``"80"``/``"08"``
+    (unchanged from the original ``zfill(2)`` behaviour for 중분류 tables);
+    non-numeric BOK codes such as ``"A"`` (대분류) or ``"C01"`` are preserved
+    verbatim instead of being mangled to ``"0A"``. Blank/NaN → None.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, float) and math.isnan(raw):
+        return None
+    s = str(raw).strip()
+    if s in ("", "nan", "None", "<NA>"):
+        return None
+    if _NUMERIC_CODE.fullmatch(s):
+        return s.split(".")[0].zfill(2)
+    return s
 
 METRICS = ("production", "value_added", "employment")
 
@@ -45,7 +69,7 @@ def _column_sums(ws, layout: RegionTableLayout, metric: str) -> pd.DataFrame:
     for c in range(layout.data_col_start, layout.data_col_end + 1):
         code = ws.cell(row=layout.sector_code_row, column=c).value
         name = ws.cell(row=layout.sector_name_row, column=c).value
-        codes[c] = str(code).zfill(2) if code is not None else None
+        codes[c] = normalize_sector_code(code)
         names[c] = name
 
     rows = []
@@ -100,7 +124,7 @@ def load_coefficients(csv_path: str | Path) -> pd.DataFrame:
     """
     df = pd.read_csv(csv_path, dtype={"sector_code": str})
     df = df.rename(columns=_LEGACY_RENAME)
-    df["sector_code"] = df["sector_code"].str.zfill(2)
+    df["sector_code"] = df["sector_code"].map(normalize_sector_code)
     missing = [c for c in COEF_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"Coefficient file {csv_path} missing columns: {missing}")
@@ -110,7 +134,7 @@ def load_coefficients(csv_path: str | Path) -> pd.DataFrame:
 def load_sectors(csv_path: str | Path) -> list[dict]:
     """List the sectors (code, name) of a cached coefficient CSV, in table order."""
     df = pd.read_csv(csv_path, dtype={"sector_code": str})
-    df["sector_code"] = df["sector_code"].str.zfill(2)
+    df["sector_code"] = df["sector_code"].map(normalize_sector_code)
     names = df["sector_name"] if "sector_name" in df.columns else [""] * len(df)
     return [{"sector_code": c, "sector_name": "" if pd.isna(n) else str(n)}
             for c, n in zip(df["sector_code"], names)]
