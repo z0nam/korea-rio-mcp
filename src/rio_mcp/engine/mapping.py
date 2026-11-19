@@ -112,11 +112,15 @@ def prepare_spending(spending: list[dict]) -> tuple[pd.DataFrame, list[dict]]:
                 raise ValueError(f"{where}: missing {key!r} (or its Korean alias)")
         share = r.get("vendor_in_region_share")
         share = 1.0 if _blank(share) else float(share)
+        amt = float(r["amount_mw"])
+        if not (math.isfinite(amt) and math.isfinite(share)):
+            raise ValueError(f"{where}: amount_mw/vendor_in_region_share must be finite "
+                             f"numbers, got {r['amount_mw']!r}/{share!r}")
         rows.append({
             "line_id": r.get("line_id"), "item": r.get("item"),
             "sector_code": r["sector_code"],
             "sector_name": "" if _blank(r.get("sector_name")) else r["sector_name"],
-            "amount_mw": float(r["amount_mw"]) * share,
+            "amount_mw": amt * share,
         })
     cols = ["sector_code", "sector_name", "amount_mw"]
     for opt in ("item", "line_id"):
@@ -175,6 +179,9 @@ def crosscheck_mapping(mapping: list[dict], coef: pd.DataFrame,
         except (TypeError, ValueError):
             add(issues, i, r, "invalid_amount", f"amount_mw not numeric: {amt_raw!r}")
             continue
+        if not math.isfinite(amt):
+            add(issues, i, r, "invalid_amount", f"amount_mw not finite: {amt_raw!r}")
+            continue
         if amt < 0:
             add(issues, i, r, "negative_amount", f"amount_mw negative: {amt:g}")
         tot["all"] += amt
@@ -191,6 +198,8 @@ def crosscheck_mapping(mapping: list[dict], coef: pd.DataFrame,
         else:
             try:
                 share = float(share_raw)
+                if not math.isfinite(share):
+                    raise ValueError
             except (TypeError, ValueError):
                 add(issues, i, r, "invalid_share", f"vendor_in_region_share not numeric: {share_raw!r}")
                 share = 1.0

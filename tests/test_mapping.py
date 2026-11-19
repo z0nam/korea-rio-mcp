@@ -131,3 +131,24 @@ def test_crosscheck_missing_share_alone_keeps_ok():
     res = server.rio_crosscheck_mapping(*JEJU, mapping=[
         {"line_id": "A", "sector_code": "80", "amount_mw": 1.0, "effect_yn": "Y"}])
     assert res["ok"] is True and res["notes"][0]["code"] == "missing_share"
+
+
+def test_all_n_policy_channel_is_zero_not_null():
+    res = server.rio_compute_event(*JEJU, event_spec={
+        "policy_spending": N_ROWS_KO, "n_outsider": 1000})
+    assert res["policy_expenditure"]["production_in_region_mw"] == 0.0
+    assert res["combined"]["production_in_region_mw"] == res["participant"]["production_in_region_mw"]
+    assert res["combined"]["production_in_region_mw"] > 0
+    res2 = server.rio_compute_effects(*JEJU, spending=N_ROWS_KO)
+    assert res2["totals"]["production_in_region_mw"] == 0.0 and len(res2["excluded_lines"]) == 2
+
+
+@pytest.mark.parametrize("bad", ["NaN", "Infinity", "1e309"])
+def test_non_finite_amount_rejected(bad):
+    row = {"line_id": "A", "sector_code": "80", "amount_mw": bad, "effect_yn": "Y",
+           "vendor_in_region_share": 1.0}
+    res = server.rio_crosscheck_mapping(*JEJU, mapping=[row], budget_total_mw=1.0)
+    assert res["ok"] is False
+    assert any(i["code"] == "invalid_amount" for i in res["issues"])
+    with pytest.raises(ValueError, match="finite"):
+        server.rio_compute_effects(*JEJU, spending=[row])

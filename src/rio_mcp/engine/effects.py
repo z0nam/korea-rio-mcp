@@ -294,6 +294,9 @@ def summarize(df: pd.DataFrame) -> dict:
     "not available" — rather than a misleading 0.0.
     """
     out = {}
+    if df.empty:
+        # No spending lines (e.g. every row excluded as effect_yn N) → zero effect.
+        return {col: 0.0 for col in _EFFECT_OUT}
     for col in _EFFECT_OUT:
         if col not in df.columns:
             continue
