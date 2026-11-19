@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: Office/Business :: Financial",
 ]
 dependencies = [
-    "mcp>=1.2.0",
+    "mcp>=1.2.0,<2",  # 2.x: FastMCP→MCPServer 개명. 이전 전까지 상한 (#2)
     "pandas>=2.0",
     "openpyxl>=3.1",
     "httpx>=0.27",

@@ -72,6 +72,12 @@ Python 3.10 이상이 필요합니다. 제주 2020년 중분류(83부문) 계수
 claude mcp add korea-rio -- korea-rio-mcp
 ```
 
+이 저장소를 Claude Code 프로젝트로 열어 개발할 때는 체크아웃을 가리키도록 로컬 범위에 별도 이름(`korea-rio-dev`)으로 등록합니다. 같은 이름 `korea-rio` 로 등록하면 사용자 범위 서버를 가립니다(플러그인용 MCP 정의는 `.claude-plugin/plugin.json` 의 `mcpServers` 에 있습니다):
+
+```bash
+claude mcp add -s local korea-rio-dev -- uv run --directory "$PWD" korea-rio-mcp
+```
+
 **Codex** — `~/.codex/config.toml`:
 
 ```toml
