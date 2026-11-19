@@ -75,6 +75,12 @@ Or register in one line:
 claude mcp add korea-rio -- korea-rio-mcp
 ```
 
+To develop with this repo opened as a Claude Code project, register it at local scope under a distinct name (`korea-rio-dev`) pointing at the checkout — reusing `korea-rio` would shadow a user-scope server of that name (the plugin's MCP definition lives in `mcpServers` of `.claude-plugin/plugin.json`):
+
+```bash
+claude mcp add -s local korea-rio-dev -- uv run --directory "$PWD" korea-rio-mcp
+```
+
 **Codex** — `~/.codex/config.toml`:
 
 ```toml
