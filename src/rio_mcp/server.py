@@ -78,6 +78,12 @@ def _ignored_deflator_warning(channel: str | None = None) -> str:
             "price_basis='nominal'로 지정할 것")
 
 
+def _no_own_deflators(spending: list[dict]) -> bool:
+    """True when no counted line carries its own deflator."""
+    own = line_deflators(spending, None)
+    return bool(own) and all(d is None for d in own)
+
+
 def _profile_year_warnings(names: list[str], table_year: int) -> list[str]:
     out = []
     for name in dict.fromkeys(names):
@@ -221,8 +227,9 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
     prices of the table's base year (assumption always reported in
     ``assumptions`` as code ``price_basis``). ``price_basis="nominal"``
     treats them as current prices and converts employment only: each line's
-    employment uses amount ÷ deflator (base year = 1.0; recommended: the GDP
-    deflator rebased to table_year). Production and value-added are not
+    employment uses amount ÷ deflator (base year = 1.0; recommended: each
+    line's sector output deflator rebased to table_year — a single index such
+    as the GDP deflator for all lines is flagged as a simplifying assumption). Production and value-added are not
     changed — their coefficients are 원/원 ratios, so deflating, applying and
     re-inflating gives the same numbers. The deflator comes from the line's
     ``deflator`` key, else the top-level ``deflator`` argument; ≤ 0 or
@@ -238,10 +245,15 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
     unmatched = _check(df_in, coef, strict)
     df = compute_effects(df_in, coef)
     price_warnings = []
+    price_assumptions = []
     if pb == "nominal":
         df, missing = price.deflate_employment(df, deflators)
         if missing:
             price_warnings.append(_missing_deflator_warning(missing))
+        if default_defl is not None and _no_own_deflators(spending):
+            a, w = price.single_deflator_assumption(default_defl)
+            price_assumptions.append(a)
+            price_warnings.append(w)
     elif any(d is not None for d in deflators):
         price_warnings.append(_ignored_deflator_warning())
     return {
@@ -251,7 +263,7 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
         "totals": _totals(df, pb == "nominal"),
         "excluded_lines": excluded,
         "unmatched_sectors": unmatched,
-        "assumptions": [price.price_assumption(pb, table_year), *assumptions],
+        "assumptions": [price.price_assumption(pb, table_year), *price_assumptions, *assumptions],
         "warnings": input_warnings + price_warnings + unmatched_warnings(unmatched),
     }
 
@@ -303,7 +315,10 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     ``event_spec["policy_deflator"]`` > ``deflator``; participant channel:
     visitor group ``deflator`` > ``event_spec["participant_deflator"]`` >
     ``deflator``. A channel (or group) without one gets employment None, and
-    so does ``combined``. Visitor unit-cost profiles are never re-priced; under
+    so does ``combined``. A channel-wide deflator with no per-line values (and
+    any participant-channel deflator, since visitor spending spans several
+    sectors) is flagged as ``single_deflator`` — a simplifying assumption.
+    Visitor unit-cost profiles are never re-priced; under
     nominal, a profile whose meta gives a price/survey year different from
     table_year is named in ``warnings``.
     """
@@ -322,6 +337,7 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     assumptions: list[dict] = []
     input_warnings: list[str] = []
     price_warnings: list[str] = []
+    price_assumptions: list[dict] = []
     any_deflator = policy_defl is not None or part_defl is not None
     out["excluded_lines"] = []
 
@@ -337,6 +353,10 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
             pol_eff, missing = price.deflate_employment(pol_eff, pol_deflators)
             if missing:
                 price_warnings.append(_missing_deflator_warning(missing, "policy_expenditure"))
+            if policy_defl is not None and _no_own_deflators(policy):
+                a, w = price.single_deflator_assumption(policy_defl, "policy_expenditure")
+                price_assumptions.append(a)
+                price_warnings.append(w)
         out["policy_expenditure"] = _totals(pol_eff, nominal)
 
     participant_frames = []
@@ -390,6 +410,14 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
             part_df, missing = price.deflate_employment(part_df, part_deflators)
             if missing:
                 price_warnings.append(_missing_deflator_warning(missing, "participant"))
+            # Participant spending spans several sectors under one channel/group
+            # deflator, so any deflator applied there is a single index.
+            applied = sorted({d for d in part_deflators if d is not None})
+            if applied:
+                a, w = price.single_deflator_assumption(applied[0] if len(applied) == 1 else applied,
+                                                        "participant")
+                price_assumptions.append(a)
+                price_warnings.append(w)
             price_warnings += _profile_year_warnings(used_profiles, table_year)
         if visitor_groups:
             out["participant_by_group"] = {
@@ -409,7 +437,7 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
         combined[k] = None if any(v is None for v in vals) else round(sum(vals), 4)
     out["combined"] = combined
     out["unmatched_sectors"] = unmatched
-    out["assumptions"] = [price.price_assumption(pb, table_year), *assumptions]
+    out["assumptions"] = [price.price_assumption(pb, table_year), *price_assumptions, *assumptions]
     out["warnings"] = input_warnings + price_warnings + unmatched_warnings(unmatched)
     return out
 
@@ -483,7 +511,8 @@ def documentation_standard() -> str:
         "the headline policy metric.\n"
         "- State the price basis under the table (the assumptions list from the compute "
         "tools: constant = amounts taken as table-year prices; nominal = employment "
-        "deflated with a GDP deflator). If employment is None, do not publish it.\n"
+        "deflated with per-sector output deflators, or a single index flagged as a "
+        "simplifying assumption). If employment is None, do not publish it.\n"
         "Use rio_render_report(preset='interim'|'final') to produce the table."
     )
 

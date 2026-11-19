@@ -46,8 +46,14 @@ def test_golden_nominal_deflator_117(how):
     assert round(t["value_added_in_region_mw"], 1) == 6729.6
     assert round(t["employment_in_region_persons"], 2) == 135.30
     assert round(t["employment_out_region_persons"], 2) == 23.24
-    assert _pb(res)["price_basis"] == "nominal" and "GDP 디플레이터" in _pb(res)["message"]
-    assert res["warnings"] == []
+    assert _pb(res)["price_basis"] == "nominal" and "부문의 산출 디플레이터" in _pb(res)["message"]
+    single = [a for a in res["assumptions"] if a["code"] == "single_deflator"]
+    if how == "line":  # per-line (sector) deflator → no simplification flag
+        assert single == [] and res["warnings"] == []
+    else:              # one top-level index for all lines → flagged
+        assert single == [{"code": "single_deflator", "message": "단일 디플레이터 적용 — 단순화 가정",
+                           "deflator": 1.17}]
+        assert len(res["warnings"]) == 1 and "단일 디플레이터 적용" in res["warnings"][0]
 
 
 def test_golden_nominal_without_deflator_is_none():
@@ -187,7 +193,7 @@ def test_report_shows_assumptions():
 def test_report_nominal_none_employment_is_na():
     res = server.rio_compute_effects(*JEJU, spending=[L52], price_basis="nominal")
     md = server.rio_render_report(res, preset="final")
-    assert "| 취업유발효과 (명) | N/A" in md and "GDP 디플레이터" in md
+    assert "| 취업유발효과 (명) | N/A" in md and "부문의 산출 디플레이터" in md
 
 
 def test_report_default_assumption_without_input():
@@ -214,3 +220,38 @@ def test_duplicate_group_labels_same_deflator_ok():
     res = server.rio_compute_event(*JEJU, price_basis="nominal",
                                    event_spec={"visitor_groups": groups})
     assert res["participant"]["employment_in_region_persons"] is not None
+
+
+# --- sector vs single deflator flag (사용자 결정 정정) ---------------------- #
+def _codes(res):
+    return [a["code"] for a in res["assumptions"]]
+
+
+def test_mixed_line_and_top_deflator_not_flagged_single():
+    res = server.rio_compute_effects(*JEJU, price_basis="nominal", deflator=1.1, spending=[
+        {**L52, "deflator": 1.17},
+        {"sector_code": "80", "amount_mw": 100, "vendor_in_region_share": 1.0}])
+    assert "single_deflator" not in _codes(res)
+
+
+def test_event_policy_single_flag_only_without_line_values():
+    flagged = server.rio_compute_event(*JEJU, price_basis="nominal",
+                                       event_spec={"policy_spending": [L52], "policy_deflator": 1.17})
+    a = [x for x in flagged["assumptions"] if x["code"] == "single_deflator"]
+    assert a == [{"code": "single_deflator", "message": "단일 디플레이터 적용 — 단순화 가정",
+                  "deflator": 1.17, "channel": "policy_expenditure"}]
+    sector = server.rio_compute_event(*JEJU, price_basis="nominal",
+                                      event_spec={"policy_spending": [{**L52, "deflator": 1.17}]})
+    assert "single_deflator" not in _codes(sector)
+
+
+def test_event_participant_deflator_always_single():
+    res = server.rio_compute_event(*JEJU, price_basis="nominal",
+                                   event_spec={"n_outsider": 1000, "participant_deflator": 1.2})
+    a = [x for x in res["assumptions"] if x["code"] == "single_deflator"]
+    assert len(a) == 1 and a[0]["channel"] == "participant" and a[0]["deflator"] == 1.2
+
+
+def test_constant_has_no_single_flag():
+    res = server.rio_compute_effects(*JEJU, spending=[L52], deflator=1.17)
+    assert "single_deflator" not in _codes(res)

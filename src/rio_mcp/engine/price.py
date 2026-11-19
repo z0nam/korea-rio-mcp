@@ -10,8 +10,10 @@ price rise. So:
 * ``price_basis="constant"`` (default) — amounts are taken as base-year prices;
   nothing is converted and an assumption is always reported.
 * ``price_basis="nominal"`` — amounts are current prices; employment only is
-  computed on ``amount / deflator`` (deflator: base year = 1.0, recommended the
-  GDP deflator rebased to the table year). A line without a deflator makes the
+  computed on ``amount / deflator`` (deflator: base year = 1.0; recommended the
+  line's sector output deflator, rebased to the table year — the standard
+  practice abroad; a single index such as the GDP deflator applied to every
+  line is reported as a simplifying assumption). A line without a deflator makes the
   employment result None (no partial totals) — no default deflator is assumed.
 """
 from __future__ import annotations
@@ -25,9 +27,27 @@ PRICE_BASES = ("constant", "nominal")
 EMPLOYMENT_COLS = ("employment_in_region_persons", "employment_out_region_persons")
 
 NOMINAL_MESSAGE = (
-    "취업유발만 줄별 디플레이터로 표 기준연도 가격 환산. 디플레이터 선택은 사용자 입력"
-    "(권장: GDP 디플레이터 — 산업별 디플레이터를 쓰는 해외 관행 대비 단순화 가정)"
+    "취업유발만 줄별 디플레이터로 표 기준연도 가격 환산. 권장: 해당 부문의 산출 디플레이터"
+    "(해외 표준 관행). GDP 디플레이터 등 단일 지수를 전 줄에 쓰면 단순화 가정으로 명기"
 )
+SINGLE_DEFLATOR_MESSAGE = "단일 디플레이터 적용 — 단순화 가정"
+
+
+def single_deflator_assumption(deflator: float | list[float],
+                               channel: str | None = None) -> tuple[dict, str]:
+    """Assumption + warning when one deflator covers every line (no per-line values).
+
+    ``deflator`` may be a list when participant groups each carry one index.
+    """
+    a = {"code": "single_deflator", "message": SINGLE_DEFLATOR_MESSAGE, "deflator": deflator}
+    if channel:
+        a["channel"] = channel
+    prefix = f"[{channel}] " if channel else ""
+    shown = (", ".join(f"{d:g}" for d in deflator) if isinstance(deflator, list)
+             else f"{deflator:g}")
+    w = (f"{prefix}{SINGLE_DEFLATOR_MESSAGE}: 줄별(부문별) 디플레이터 없이 {shown}를 여러 부문에 "
+         "일괄 적용함 — 부문별 산출 디플레이터를 줄별 deflator로 넣는 것을 권장")
+    return a, w
 
 
 def constant_message(table_year: int | None) -> str:
