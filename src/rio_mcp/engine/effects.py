@@ -25,19 +25,81 @@ _EFFECT_OUT = [
 ]
 
 
-def compute_effects(df_amount: pd.DataFrame, coef: pd.DataFrame) -> pd.DataFrame:
+class UnmatchedSectorError(ValueError):
+    """Raised by ``strict`` computations when a sector code is not in the table."""
+
+    def __init__(self, unmatched: list[dict]):
+        self.unmatched = unmatched
+        codes = ", ".join(f"{u['sector_code']}({u['amount_mw']:g}백만원)" for u in unmatched)
+        super().__init__(
+            f"Sector code(s) not in coefficient table: {codes}. "
+            "Check codes with rio_list_sectors."
+        )
+
+
+def _norm_code(sc_raw) -> str | None:
+    """Normalize a sector code to the table's zero-padded form; None if blank."""
+    if sc_raw is None or (not isinstance(sc_raw, str) and pd.isna(sc_raw)):
+        return None
+    s = str(sc_raw).strip()
+    if s in ("", "nan", "None"):
+        return None
+    return s.split(".")[0].zfill(2)
+
+
+def find_unmatched_sectors(df_amount: pd.DataFrame, coef: pd.DataFrame) -> list[dict]:
+    """Return spending lines whose sector code is absent from ``coef``.
+
+    Intended zeros are *not* reported: ``sector_code`` None/blank (e.g. the
+    air/sea items of a stay profile, deliberately routed out of region) and
+    lines whose amount is 0. Each entry: ``sector_code`` (as given),
+    ``sector_name``, ``amount_mw``, plus ``그룹``/``stay_item`` when present.
+    """
+    out = []
+    if df_amount.empty or "sector_code" not in df_amount.columns:
+        return out
+    for _, r in df_amount.iterrows():
+        sc = _norm_code(r["sector_code"])
+        amt = float(r["amount_mw"])
+        if sc is None or amt == 0 or sc in coef.index:
+            continue
+        entry = {"sector_code": str(r["sector_code"]).strip(),
+                 "sector_name": r.get("sector_name", "") if pd.notna(r.get("sector_name", "")) else "",
+                 "amount_mw": round(amt, 6)}
+        for extra in ("그룹", "stay_item"):
+            if extra in r and pd.notna(r[extra]):
+                entry[extra] = r[extra]
+        out.append(entry)
+    return out
+
+
+def unmatched_warnings(unmatched: list[dict]) -> list[str]:
+    """Human-readable warnings for :func:`find_unmatched_sectors` output."""
+    return [
+        f"부문코드 {u['sector_code']!r}가 계수표에 없어 금액 {u['amount_mw']:g}백만원의 효과를 0으로 처리함"
+        + (f" (그룹 {u['그룹']})" if u.get("그룹") else "")
+        for u in unmatched
+    ]
+
+
+def compute_effects(df_amount: pd.DataFrame, coef: pd.DataFrame,
+                    strict: bool = False) -> pd.DataFrame:
     """Multiply ``amount_mw`` (백만원) by per-sector induced coefficients.
 
     ``df_amount`` needs ``sector_code`` and ``amount_mw`` columns. Employment
     uses ``amount_mw / 1000`` because its coefficient is in 명/10억원.
-    sector_code None / absent from coef / amount 0 → zero effect.
+    sector_code None / absent from coef / amount 0 → zero effect. Codes absent
+    from ``coef`` (with a non-zero amount) can be listed with
+    :func:`find_unmatched_sectors`; with ``strict=True`` they raise
+    :class:`UnmatchedSectorError` instead.
     """
+    if strict:
+        unmatched = find_unmatched_sectors(df_amount, coef)
+        if unmatched:
+            raise UnmatchedSectorError(unmatched)
     rows = []
     for _, r in df_amount.iterrows():
-        sc_raw = r["sector_code"]
-        sc = (str(sc_raw).split(".")[0].zfill(2)
-              if sc_raw is not None and pd.notna(sc_raw) and str(sc_raw).strip() not in ("", "nan")
-              else None)
+        sc = _norm_code(r["sector_code"])
         amt = float(r["amount_mw"])
         if sc is None or sc not in coef.index or amt == 0:
             rows.append({**r.to_dict(), **{c: 0.0 for c in _EFFECT_OUT}})

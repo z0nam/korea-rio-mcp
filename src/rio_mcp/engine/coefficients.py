@@ -105,3 +105,12 @@ def load_coefficients(csv_path: str | Path) -> pd.DataFrame:
     if missing:
         raise ValueError(f"Coefficient file {csv_path} missing columns: {missing}")
     return df.set_index("sector_code")[COEF_COLUMNS]
+
+
+def load_sectors(csv_path: str | Path) -> list[dict]:
+    """List the sectors (code, name) of a cached coefficient CSV, in table order."""
+    df = pd.read_csv(csv_path, dtype={"sector_code": str})
+    df["sector_code"] = df["sector_code"].str.zfill(2)
+    names = df["sector_name"] if "sector_name" in df.columns else [""] * len(df)
+    return [{"sector_code": c, "sector_name": "" if pd.isna(n) else str(n)}
+            for c, n in zip(df["sector_code"], names)]
