@@ -28,6 +28,7 @@ Computes regional economic impact effects (production, value-added, employment /
 ### Step 1. Inspect Available Coefficient Tables & Profiles
 - `rio_list_coefficients`: List available coefficient tables (bundled: Jeju 2020 83-sector intermediate classification).
 - `rio_list_profiles`: Inspect built-in per-capita spending profiles for event attendees (e.g., `jeju_domestic_leisure` for festival visitors, `jeju_domestic_visitor`/`jeju_foreign_visitor` for MICE/forum participants).
+- `rio_list_sectors(region, table_year)`: List valid sector codes/names of a table; use it to check `sector_code` values in Step 2.
 - (Optional) `rio_check_base_table_update`: Check if BOK has published newer regional IO tables.
 
 ### Step 2. Map Expenditures to Industrial Sectors
@@ -42,6 +43,7 @@ Choose between direct spending calculation and combined event calculation:
 
 - **Sector-level spending**:
   - Use `rio_compute_effects` with `region`, `table_year`, and `spending` list.
+- Both tools return `unmatched_sectors` and `warnings`: a non-zero amount whose `sector_code` is not in the table is counted as 0 effect. Always check these and fix the code (or pass `strict=true` to fail instead). A null `sector_code` (e.g. air/sea leakage in stay profiles) is an intended zero and is not reported.
 - **Combined event (policy + participants)**:
   - Use `rio_compute_event` with `event_spec`.
   - Keeps policy expenditure channel (homogeneous, reliable) and participant channel (variable visitor spending) distinct to prevent double-counting and bias.

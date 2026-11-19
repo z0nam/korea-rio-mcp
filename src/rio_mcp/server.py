@@ -13,12 +13,15 @@ import pandas as pd
 from mcp.server.fastmcp import FastMCP
 
 from .engine import defaults, profiles
-from .engine.coefficients import load_coefficients
+from .engine.coefficients import load_coefficients, load_sectors
 from .engine.effects import (
+    UnmatchedSectorError,
     compute_effects,
+    find_unmatched_sectors,
     event_site_effects_standard,
     stay_spending_effects_standard,
     summarize,
+    unmatched_warnings,
     visitor_group_effects,
 )
 from .store import cache
@@ -32,6 +35,17 @@ def _load(region: str, table_year: int, classification: str) -> pd.DataFrame:
     return load_coefficients(cache.resolve_path(region, table_year, classification))
 
 
+def _check(df: pd.DataFrame, coef: pd.DataFrame, strict: bool,
+           channel: str | None = None) -> list[dict]:
+    """Collect sector codes missing from ``coef``; raise if ``strict``."""
+    unmatched = find_unmatched_sectors(df, coef)
+    if channel is not None:
+        unmatched = [{"channel": channel, **u} for u in unmatched]
+    if strict and unmatched:
+        raise UnmatchedSectorError(unmatched)
+    return unmatched
+
+
 # --------------------------------------------------------------------------- #
 # (1) Base table
 # --------------------------------------------------------------------------- #
@@ -39,6 +53,19 @@ def _load(region: str, table_year: int, classification: str) -> pd.DataFrame:
 def rio_list_coefficients() -> list[dict]:
     """List coefficient tables available (cached or bundled)."""
     return cache.list_available()
+
+
+@mcp.tool()
+def rio_list_sectors(region: str, table_year: int,
+                     classification: str = "중분류(83부문)") -> list[dict]:
+    """List the sector codes and names of one coefficient table.
+
+    Use it to check ``sector_code`` values before rio_compute_effects /
+    rio_compute_event: a code that is not in this list contributes zero effect
+    (reported under ``unmatched_sectors``/``warnings``, or an error with
+    ``strict=True``).
+    """
+    return load_sectors(cache.resolve_path(region, table_year, classification))
 
 
 @mcp.tool()
@@ -77,14 +104,20 @@ def rio_load_base_table(xlsx_path: str, region: str, table_year: int,
 # --------------------------------------------------------------------------- #
 @mcp.tool()
 def rio_compute_effects(region: str, table_year: int, spending: list[dict],
-                        classification: str = "중분류(83부문)") -> dict:
+                        classification: str = "중분류(83부문)",
+                        strict: bool = False) -> dict:
     """Compute induced effects for sector-level spending.
 
     ``spending``: list of {sector_code, amount_mw, vendor_in_region_share?}.
     The in-region capture share (default 1.0) scales the spending base before
     the induced coefficients further split each effect in/out of region.
     Returns per-line effects and a totals summary (production/value-added/
-    employment, each in-region/out-of-region).
+    employment, each in-region/out-of-region), plus ``unmatched_sectors``
+    (lines whose sector_code is not in the table, with their amount — their
+    effect is counted as 0) and matching ``warnings``. A null sector_code or a
+    zero amount is treated as an intended zero and not reported. With
+    ``strict=True`` an unmatched code raises an error instead. Valid codes:
+    rio_list_sectors.
     """
     coef = _load(region, table_year, classification)
     rows = []
@@ -95,17 +128,22 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
             "sector_name": s.get("sector_name", ""),
             "amount_mw": float(s["amount_mw"]) * share,
         })
-    df = compute_effects(pd.DataFrame(rows), coef)
+    df_in = pd.DataFrame(rows, columns=["sector_code", "sector_name", "amount_mw"])
+    unmatched = _check(df_in, coef, strict)
+    df = compute_effects(df_in, coef)
     return {
         "region": region, "table_year": table_year,
         "lines": df.to_dict(orient="records"),
         "totals": summarize(df),
+        "unmatched_sectors": unmatched,
+        "warnings": unmatched_warnings(unmatched),
     }
 
 
 @mcp.tool()
 def rio_compute_event(region: str, table_year: int, event_spec: dict,
-                      classification: str = "중분류(83부문)") -> dict:
+                      classification: str = "중분류(83부문)",
+                      strict: bool = False) -> dict:
     """Compute the combined effect of an economic event.
 
     ``event_spec`` keys:
@@ -127,17 +165,24 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     Returns separate summaries for the policy-expenditure channel (reliable,
     homogeneous) and the participant channel (variable), kept apart per the
     26p17 methodology, plus a combined total (and per-group summaries when
-    visitor_groups is used).
+    visitor_groups is used). ``unmatched_sectors`` (each tagged with its
+    ``channel``: policy_expenditure / participant) and ``warnings`` list
+    non-zero amounts whose sector_code is not in the table (counted as 0);
+    intended zeros (null code, e.g. a profile's air/sea items, or amount 0)
+    are not reported. ``strict=True`` raises on any unmatched code instead.
     """
     coef = _load(region, table_year, classification)
     out: dict[str, Any] = {"region": region, "table_year": table_year}
+    unmatched: list[dict] = []
 
     policy = event_spec.get("policy_spending") or []
     if policy:
         rows = [{"sector_code": s["sector_code"], "sector_name": s.get("sector_name", ""),
                  "amount_mw": float(s["amount_mw"]) * float(s.get("vendor_in_region_share", 1.0))}
                 for s in policy]
-        out["policy_expenditure"] = summarize(compute_effects(pd.DataFrame(rows), coef))
+        pol_df = pd.DataFrame(rows)
+        unmatched += _check(pol_df, coef, strict, channel="policy_expenditure")
+        out["policy_expenditure"] = summarize(compute_effects(pol_df, coef))
 
     participant_frames = []
     visitor_groups = event_spec.get("visitor_groups")
@@ -165,6 +210,7 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
             participant_frames.append(spe)
     if participant_frames:
         part_df = pd.concat(participant_frames, ignore_index=True)
+        unmatched += _check(part_df, coef, strict, channel="participant")
         out["participant"] = summarize(part_df)
 
     # combined
@@ -176,6 +222,8 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
         # None (e.g. employment with no regional source) propagates as N/A
         combined[k] = None if any(v is None for v in vals) else round(sum(vals), 4)
     out["combined"] = combined
+    out["unmatched_sectors"] = unmatched
+    out["warnings"] = unmatched_warnings(unmatched)
     return out
 
 
