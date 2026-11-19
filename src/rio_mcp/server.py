@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .engine import defaults, profiles
 from .engine.coefficients import load_coefficients, load_sectors
+from .engine.mapping import crosscheck_mapping, prepare_spending
 from .engine.effects import (
     UnmatchedSectorError,
     compute_effects,
@@ -69,6 +70,33 @@ def rio_list_sectors(region: str, table_year: int,
 
 
 @mcp.tool()
+def rio_crosscheck_mapping(region: str, table_year: int, mapping: list[dict],
+                           classification: str = "중분류(83부문)",
+                           budget_total_mw: float | None = None) -> dict:
+    """Check a budget→sector mapping table before computing (no effects computed).
+
+    ``mapping``: rows as produced by the map_budget_to_sectors prompt
+    {line_id, item, detail?, sector_code, sector_name?, amount_mw, effect_yn,
+    vendor_in_region_share, rationale?, confidence?}; Korean column names
+    (매핑_부문코드, 추정금액_백만원, 효과여부, vendor_jeju_share, 예산항목 …)
+    are accepted as aliases.
+
+    Returns line counts, amount totals (all / effect Y / effect N / Y after
+    in-region share) and the N share by amount and count; ``unmatched_sectors``
+    (Y rows whose code is not in the table — see rio_list_sectors);
+    ``issues`` (missing code on a Y row, missing/invalid/negative amount,
+    invalid effect_yn, share outside 0–1, duplicate line_id, and — when
+    ``budget_total_mw`` is given — a gap between the budget and the mapped
+    total); ``notes`` (informational: Y rows without a share get 1.0, rows
+    without effect_yn count as Y). ``ok`` is true when there are no issues
+    and no unmatched sectors; notes do not affect it.
+    """
+    coef = _load(region, table_year, classification)
+    return {"region": region, "table_year": table_year,
+            **crosscheck_mapping(mapping, coef, budget_total_mw=budget_total_mw)}
+
+
+@mcp.tool()
 def rio_list_profiles() -> list[dict]:
     """List bundled stay-spending consumption profiles (visitor-type unit-cost
     tables: e.g. jeju_domestic_leisure for festivals, jeju_domestic_visitor /
@@ -108,9 +136,16 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
                         strict: bool = False) -> dict:
     """Compute induced effects for sector-level spending.
 
-    ``spending``: list of {sector_code, amount_mw, vendor_in_region_share?}.
-    The in-region capture share (default 1.0) scales the spending base before
-    the induced coefficients further split each effect in/out of region.
+    ``spending``: list of mapping-table rows {sector_code, amount_mw,
+    vendor_in_region_share?, effect_yn?, line_id?, item?, sector_name?, ...}
+    — the output of the map_budget_to_sectors prompt can be passed as-is
+    (Korean column names such as 매핑_부문코드/추정금액_백만원/효과여부/
+    vendor_jeju_share are accepted as aliases). Rows with effect_yn "N"
+    (also n/아니오) are left out and listed under ``excluded_lines``; rows
+    without effect_yn count as Y. The in-region capture share (default 1.0)
+    scales the spending base before the induced coefficients further split
+    each effect in/out of region. Check a mapping first with
+    rio_crosscheck_mapping.
     Returns per-line effects and a totals summary (production/value-added/
     employment, each in-region/out-of-region), plus ``unmatched_sectors``
     (lines whose sector_code is not in the table, with their amount — their
@@ -120,21 +155,14 @@ def rio_compute_effects(region: str, table_year: int, spending: list[dict],
     rio_list_sectors.
     """
     coef = _load(region, table_year, classification)
-    rows = []
-    for s in spending:
-        share = float(s.get("vendor_in_region_share", 1.0))
-        rows.append({
-            "sector_code": s["sector_code"],
-            "sector_name": s.get("sector_name", ""),
-            "amount_mw": float(s["amount_mw"]) * share,
-        })
-    df_in = pd.DataFrame(rows, columns=["sector_code", "sector_name", "amount_mw"])
+    df_in, excluded = prepare_spending(spending)
     unmatched = _check(df_in, coef, strict)
     df = compute_effects(df_in, coef)
     return {
         "region": region, "table_year": table_year,
         "lines": df.to_dict(orient="records"),
         "totals": summarize(df),
+        "excluded_lines": excluded,
         "unmatched_sectors": unmatched,
         "warnings": unmatched_warnings(unmatched),
     }
@@ -147,7 +175,9 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     """Compute the combined effect of an economic event.
 
     ``event_spec`` keys:
-      * ``policy_spending``: list of {sector_code, amount_mw, vendor_in_region_share?}
+      * ``policy_spending``: list of mapping-table rows, same rules as
+        rio_compute_effects (aliases accepted, effect_yn "N" rows excluded and
+        listed under ``excluded_lines``)
       * ``event_type`` (opt, default "festival"): preset for participant
         parameters — "festival" (26p17) or "forum_mice" (MICE/국제행사:
         purpose_weight 1.0, on-site channel off by default to avoid double
@@ -174,13 +204,11 @@ def rio_compute_event(region: str, table_year: int, event_spec: dict,
     coef = _load(region, table_year, classification)
     out: dict[str, Any] = {"region": region, "table_year": table_year}
     unmatched: list[dict] = []
+    out["excluded_lines"] = []
 
     policy = event_spec.get("policy_spending") or []
     if policy:
-        rows = [{"sector_code": s["sector_code"], "sector_name": s.get("sector_name", ""),
-                 "amount_mw": float(s["amount_mw"]) * float(s.get("vendor_in_region_share", 1.0))}
-                for s in policy]
-        pol_df = pd.DataFrame(rows)
+        pol_df, out["excluded_lines"] = prepare_spending(policy)
         unmatched += _check(pol_df, coef, strict, channel="policy_expenditure")
         out["policy_expenditure"] = summarize(compute_effects(pol_df, coef))
 
@@ -258,9 +286,15 @@ def map_budget_to_sectors(budget_items: str = "") -> str:
         "a transfer/reserve/non-demand item.\n"
         "3. vendor_in_region_share (0–1): the share procured from in-region vendors.\n"
         "4. A one-line rationale and a confidence (상/중/하).\n\n"
-        "Output a table with columns: line_id, 예산항목, 매핑_부문코드, 매핑_부문명, "
-        "추정금액_백만원, 효과여부, vendor_in_region_share, 근거, 신뢰도. "
-        "Then it can be fed to rio_compute_effects.\n\n"
+        "Output the table as a list of rows with exactly these keys: line_id, item "
+        "(예산항목), detail (세부내역), sector_code, sector_name, amount_mw "
+        "(추정금액, 백만원), effect_yn (Y/N), vendor_in_region_share (0–1), "
+        "rationale (근거), confidence (상/중/하). Keep effect_yn N rows in the "
+        "table — the tools exclude them from the totals and report them.\n\n"
+        "Next: pass the rows to rio_crosscheck_mapping (with budget_total_mw if "
+        "the budget total is known) and fix every issue and unmatched sector; then "
+        "pass the same rows unchanged as ``spending`` to rio_compute_effects (or "
+        "``policy_spending`` in rio_compute_event).\n\n"
         f"Budget items:\n{budget_items}"
     )
 

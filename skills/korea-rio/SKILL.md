@@ -37,12 +37,15 @@ Computes regional economic impact effects (production, value-added, employment /
   - `sector_code` (and optional `sector_name`)
   - `amount_mw` (amount in million KRW, 백만 원)
   - `vendor_in_region_share` (fraction captured by regional vendors, default `1.0`)
+  - `effect_yn` (`Y`/`N`; N = transfer/reserve/non-demand item — kept in the table, excluded from totals)
+  - plus `line_id`, `item`, `detail`, `rationale`, `confidence` (the `map_budget_to_sectors` prompt outputs exactly these keys; Korean column names such as `매핑_부문코드`/`추정금액_백만원`/`효과여부`/`vendor_jeju_share` are accepted as aliases)
+- Run `rio_crosscheck_mapping(region, table_year, mapping, budget_total_mw?)` and fix every `issues` entry and `unmatched_sectors` before computing. `notes` (e.g. missing share → 1.0) are informational.
 
 ### Step 3. Compute Effects
 Choose between direct spending calculation and combined event calculation:
 
 - **Sector-level spending**:
-  - Use `rio_compute_effects` with `region`, `table_year`, and `spending` list.
+  - Use `rio_compute_effects` with `region`, `table_year`, and `spending` list (pass the checked mapping rows unchanged; `effect_yn` N rows come back under `excluded_lines`).
 - Both tools return `unmatched_sectors` and `warnings`: a non-zero amount whose `sector_code` is not in the table is counted as 0 effect. Always check these and fix the code (or pass `strict=true` to fail instead). A null `sector_code` (e.g. air/sea leakage in stay profiles) is an intended zero and is not reported.
 - **Combined event (policy + participants)**:
   - Use `rio_compute_event` with `event_spec`.
