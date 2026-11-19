@@ -21,10 +21,27 @@ def _row(label: str, in_v, out_v, unit: str, dec: int = 1) -> str:
 
 
 def render_report(results: dict, preset: str = "interim",
-                  title: str | None = None, input_budget_mw: float | None = None) -> str:
-    """Render a markdown effect table. ``preset`` in {'interim','final'}."""
+                  title: str | None = None, input_budget_mw: float | None = None,
+                  assumptions: list[dict] | None = None,
+                  table_year: int | None = None) -> str:
+    """Render a markdown effect table. ``preset`` in {'interim','final'}.
+
+    ``results`` is the six-key totals dict, or a whole rio_compute_effects /
+    rio_compute_event response (its ``totals`` / ``combined`` and
+    ``assumptions`` are then used). Assumption messages are listed under the
+    table; without any, the default price-basis assumption (constant, amounts
+    taken as ``table_year`` prices) is shown.
+    """
     if preset not in ("interim", "final"):
         raise ValueError("preset must be 'interim' or 'final'")
+    if "production_in_region_mw" not in results:
+        if assumptions is None:
+            assumptions = results.get("assumptions")
+        table_year = table_year or results.get("table_year")
+        results = results.get("totals") or results.get("combined") or {}
+    if not assumptions:
+        from ..engine.price import price_assumption
+        assumptions = [price_assumption("constant", table_year)]
 
     lines: list[str] = []
     if title:
@@ -50,4 +67,5 @@ def render_report(results: dict, preset: str = "interim",
     if preset == "interim":
         lines += ["", "- 부가가치유발·취업유발 효과는 부록에 별도 수록. "
                       "최종보고 총괄효과 표에서는 세 지표를 함께 제시."]
+    lines += [""] + [f"- 가정: {a['message']}" for a in assumptions if a.get("message")]
     return "\n".join(lines)

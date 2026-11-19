@@ -11,6 +11,12 @@ JEJU = ("제주", 2020)
 SHARE_MSG = "역내 조달 비율을 지정하지 않아 100%로 가정함"
 
 
+def _input_assumptions(res):
+    # price_basis is always reported (1절); these tests check the input ones.
+    assert res["assumptions"][0]["code"] == "price_basis"
+    return [a for a in res["assumptions"] if a["code"] != "price_basis"]
+
+
 # --- 6절 golden case (constant / default call) ------------------------------ #
 def test_golden_sector52_10000mw():
     """제주·2020·중분류, 부문 52, 10,000백만원, 역내조달 1.0.
@@ -25,7 +31,7 @@ def test_golden_sector52_10000mw():
     assert round(t["value_added_in_region_mw"], 1) == 6729.6
     assert round(t["employment_in_region_persons"], 2) == 158.31
     assert round(t["employment_out_region_persons"], 2) == 27.19
-    assert res["warnings"] == [] and res["assumptions"] == []
+    assert res["warnings"] == [] and _input_assumptions(res) == []
 
 
 def test_golden_unmatched_and_strict():
@@ -45,7 +51,7 @@ def test_missing_vendor_share_warns_and_records_assumption():
         {"line_id": "L2", "sector_code": "80", "amount_mw": 50, "vendor_in_region_share": 0.5},
         {"line_id": "L3", "sector_code": "58", "amount_mw": 30},
     ])
-    assert res["assumptions"] == [{"code": "default_vendor_share", "message": SHARE_MSG,
+    assert _input_assumptions(res) == [{"code": "default_vendor_share", "message": SHARE_MSG,
                                    "n_lines": 2, "line_ids": ["L1", "L3"]}]
     assert f"{SHARE_MSG} (2줄)" in res["warnings"]
     # numbers unchanged: missing share still means 1.0
@@ -60,20 +66,20 @@ def test_effect_n_rows_not_counted_for_share_assumption():
     res = server.rio_compute_effects(*JEJU, spending=[
         {"sector_code": "52", "amount_mw": 100, "vendor_in_region_share": 1.0},
         {"sector_code": "74", "amount_mw": 30, "effect_yn": "N"}])
-    assert res["assumptions"] == [] and res["warnings"] == []
+    assert _input_assumptions(res) == [] and res["warnings"] == []
 
 
 def test_event_policy_channel_assumption():
     res = server.rio_compute_event(*JEJU, event_spec={
         "policy_spending": [{"sector_code": "52", "amount_mw": 100}], "n_outsider": 1000})
-    assert res["assumptions"] == [{"code": "default_vendor_share", "message": SHARE_MSG,
+    assert _input_assumptions(res) == [{"code": "default_vendor_share", "message": SHARE_MSG,
                                    "n_lines": 1, "channel": "policy_expenditure"}]
     assert res["warnings"][0] == f"[policy_expenditure] {SHARE_MSG} (1줄)"
 
 
 def test_event_without_policy_has_empty_assumptions():
     res = server.rio_compute_event(*JEJU, event_spec={"n_outsider": 1000})
-    assert res["assumptions"] == [] and res["warnings"] == []
+    assert _input_assumptions(res) == [] and res["warnings"] == []
 
 
 # --- 2절 unit warnings ------------------------------------------------------ #
@@ -117,7 +123,7 @@ def test_required_mapping_columns_korean(amount_key):
     assert round(res["totals"]["production_in_region_mw"], 1) == 12406.9
     assert res["excluded_lines"][0]["line_id"] == "A2"
     assert res["lines"][0]["item"] == "행사운영"
-    assert res["assumptions"] == []
+    assert _input_assumptions(res) == []
 
 
 def test_prompt_points_to_list_sectors():
