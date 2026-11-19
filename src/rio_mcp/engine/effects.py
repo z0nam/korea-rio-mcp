@@ -53,7 +53,8 @@ def find_unmatched_sectors(df_amount: pd.DataFrame, coef: pd.DataFrame) -> list[
     Intended zeros are *not* reported: ``sector_code`` None/blank (e.g. the
     air/sea items of a stay profile, deliberately routed out of region) and
     lines whose amount is 0. Each entry: ``sector_code`` (as given),
-    ``sector_name``, ``amount_mw``, plus ``그룹``/``stay_item`` when present.
+    ``sector_name``, ``amount_mw``, plus ``line_id``/``item``/``그룹``/
+    ``stay_item`` when present.
     """
     out = []
     if df_amount.empty or "sector_code" not in df_amount.columns:
@@ -66,7 +67,7 @@ def find_unmatched_sectors(df_amount: pd.DataFrame, coef: pd.DataFrame) -> list[
         entry = {"sector_code": str(r["sector_code"]).strip(),
                  "sector_name": r.get("sector_name", "") if pd.notna(r.get("sector_name", "")) else "",
                  "amount_mw": round(amt, 6)}
-        for extra in ("그룹", "stay_item"):
+        for extra in ("line_id", "item", "그룹", "stay_item"):
             if extra in r and pd.notna(r[extra]):
                 entry[extra] = r[extra]
         out.append(entry)
@@ -120,10 +121,13 @@ def policy_expenditure_effects(coef: pd.DataFrame, spend_map_path: str | Path) -
 
     Spending-map CSV columns (Korean, as in 26p17): 매핑_부문코드, 추정금액_백만원,
     효과여부 (Y/N), vendor_jeju_share (in-region capture share). Only 효과여부=Y
-    rows count; in-region amount = 추정금액 × capture share.
+    rows count (normalized like the MCP tools: y/예 accepted, blank excluded);
+    in-region amount = 추정금액 × capture share.
     """
+    from .mapping import normalize_effect_yn
+
     sm = pd.read_csv(spend_map_path, dtype={"매핑_부문코드": str})
-    sm = sm[sm["효과여부"] == "Y"].copy()
+    sm = sm[sm["효과여부"].map(normalize_effect_yn) == "Y"].copy()
     sm["sector_code"] = sm["매핑_부문코드"].apply(
         lambda x: str(x).split(".")[0].zfill(2) if pd.notna(x) and str(x) != "nan" else None
     )
@@ -290,6 +294,9 @@ def summarize(df: pd.DataFrame) -> dict:
     "not available" — rather than a misleading 0.0.
     """
     out = {}
+    if df.empty:
+        # No spending lines (e.g. every row excluded as effect_yn N) → zero effect.
+        return {col: 0.0 for col in _EFFECT_OUT}
     for col in _EFFECT_OUT:
         if col not in df.columns:
             continue
