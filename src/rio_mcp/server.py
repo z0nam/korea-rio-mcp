@@ -7,10 +7,16 @@ LLM layer rather than deterministic tools.
 """
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 from typing import Any
 
 import pandas as pd
-from mcp.server.fastmcp import FastMCP
+try:  # mcp>=2: FastMCP was renamed MCPServer (same decorator/run API we use)
+    from mcp.server.mcpserver import MCPServer as FastMCP
+    _MCP2 = True
+except ImportError:  # mcp<2
+    from mcp.server.fastmcp import FastMCP
+    _MCP2 = False
 
 from .engine import defaults, profiles
 from .engine.coefficients import load_coefficients, load_sectors
@@ -29,7 +35,13 @@ from .store import cache
 from .data_source import bok
 from .docs.report import render_report
 
-mcp = FastMCP("korea-rio-mcp")
+try:
+    _VERSION = _pkg_version("korea-rio-mcp")
+except PackageNotFoundError:  # running from a source tree without install
+    _VERSION = "0+unknown"
+# mcp 2.x reports an empty serverInfo.version unless given one; 1.x FastMCP
+# rejects the kwarg (it reports the mcp package version instead).
+mcp = FastMCP("korea-rio-mcp", version=_VERSION) if _MCP2 else FastMCP("korea-rio-mcp")
 
 
 def _load(region: str, table_year: int, classification: str) -> pd.DataFrame:

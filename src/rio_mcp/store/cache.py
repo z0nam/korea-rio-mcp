@@ -6,6 +6,8 @@ with the package (seeded with Jeju 2020). Filenames encode the version key.
 """
 from __future__ import annotations
 
+import os
+import tempfile
 import unicodedata
 from pathlib import Path
 
@@ -44,7 +46,17 @@ def resolve_path(region: str, table_year: int, classification: str = "중분류(
 def save(df: pd.DataFrame, region: str, table_year: int, classification: str = "중분류(83부문)") -> Path:
     """Persist an extracted coefficient table to the writable cache."""
     path = _paths.cache_dir() / _filename(region, table_year, classification)
-    df.to_csv(path, index=False, encoding="utf-8-sig")
+    # Atomic write: mcp 2.x runs sync tools on worker threads concurrently, so a
+    # reader (resolve_path -> load) must never see a half-written CSV, and two
+    # concurrent saves of the same key must not interleave.
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8-sig", newline="") as f:
+            df.to_csv(f, index=False)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return path
 
 
