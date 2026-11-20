@@ -59,7 +59,7 @@ def test_tool_matches_golden_and_drops_n_rows(fmt):
     rows = _p09_rows_ko() + N_ROWS_KO
     if fmt == "new_prompt_keys":
         rows = _to_new_keys(rows)
-    res = server.rio_compute_effects(*JEJU, spending=rows)
+    res = server.rio_compute_effects(*JEJU, price_basis="constant", spending=rows)
     assert round(res["totals"]["production_in_region_mw"], 4) == 350.3085
     assert round(res["totals"]["employment_in_region_persons"], 4) == 2.3885
     assert [x["line_id"] for x in res["excluded_lines"]] == ["L03", "L04"]
@@ -67,14 +67,14 @@ def test_tool_matches_golden_and_drops_n_rows(fmt):
 
 
 def test_event_policy_spending_drops_n_rows():
-    res = server.rio_compute_event(*JEJU, event_spec={
+    res = server.rio_compute_event(*JEJU, price_basis="constant", event_spec={
         "policy_spending": _to_new_keys(_p09_rows_ko() + N_ROWS_KO)})
     assert round(res["policy_expenditure"]["production_in_region_mw"], 4) == 350.3085
     assert len(res["excluded_lines"]) == 2
 
 
 def test_legacy_spending_without_effect_yn_still_counts():
-    res = server.rio_compute_effects(*JEJU, spending=[{"sector_code": "80", "amount_mw": 10.0}])
+    res = server.rio_compute_effects(*JEJU, price_basis="constant", spending=[{"sector_code": "80", "amount_mw": 10.0}])
     assert res["excluded_lines"] == [] and res["totals"]["production_in_region_mw"] > 0
 
 
@@ -85,7 +85,7 @@ def test_canonical_key_wins_over_alias():
 
 def test_bad_effect_yn_errors():
     with pytest.raises(ValueError, match="effect_yn"):
-        server.rio_compute_effects(*JEJU, spending=[
+        server.rio_compute_effects(*JEJU, price_basis="constant", spending=[
             {"sector_code": "80", "amount_mw": 1.0, "effect_yn": "?"}])
 
 
@@ -134,12 +134,12 @@ def test_crosscheck_missing_share_alone_keeps_ok():
 
 
 def test_all_n_policy_channel_is_zero_not_null():
-    res = server.rio_compute_event(*JEJU, event_spec={
+    res = server.rio_compute_event(*JEJU, price_basis="constant", event_spec={
         "policy_spending": N_ROWS_KO, "n_outsider": 1000})
     assert res["policy_expenditure"]["production_in_region_mw"] == 0.0
     assert res["combined"]["production_in_region_mw"] == res["participant"]["production_in_region_mw"]
     assert res["combined"]["production_in_region_mw"] > 0
-    res2 = server.rio_compute_effects(*JEJU, spending=N_ROWS_KO)
+    res2 = server.rio_compute_effects(*JEJU, price_basis="constant", spending=N_ROWS_KO)
     assert res2["totals"]["production_in_region_mw"] == 0.0 and len(res2["excluded_lines"]) == 2
 
 
@@ -151,4 +151,4 @@ def test_non_finite_amount_rejected(bad):
     assert res["ok"] is False
     assert any(i["code"] == "invalid_amount" for i in res["issues"])
     with pytest.raises(ValueError, match="finite"):
-        server.rio_compute_effects(*JEJU, spending=[row])
+        server.rio_compute_effects(*JEJU, price_basis="constant", spending=[row])

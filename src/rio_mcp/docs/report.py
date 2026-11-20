@@ -20,6 +20,12 @@ def _row(label: str, in_v, out_v, unit: str, dec: int = 1) -> str:
     return f"| {label} | {fmt(in_v)} | {fmt(out_v)} | {fmt(total)} | {share:.1f}% |"
 
 
+def missing_price_message(table_year: int | None = None) -> str:
+    year = f"{table_year}년 표, " if table_year else ""
+    return (f"가격 기준 정보 없음({year}계산 응답의 assumptions를 넘기지 않음) — 취업유발의 "
+            "가격연도·디플레이터를 확인해 명기할 것")
+
+
 def render_report(results: dict, preset: str = "interim",
                   title: str | None = None, input_budget_mw: float | None = None,
                   assumptions: list[dict] | None = None,
@@ -29,8 +35,10 @@ def render_report(results: dict, preset: str = "interim",
     ``results`` is the six-key totals dict, or a whole rio_compute_effects /
     rio_compute_event response (its ``totals`` / ``combined`` and
     ``assumptions`` are then used). Assumption messages are listed under the
-    table; without any, the default price-basis assumption (constant, amounts
-    taken as ``table_year`` prices) is shown.
+    table in order — with the built-in deflators the first one is
+    "내장 부문별 산출 디플레이터 적용(…, <price_year>년 값)". Without any, a line
+    saying the price basis is unknown is shown (the compute tools default to
+    nominal + built-in deflators since #20, so constant is no longer assumed).
     """
     if preset not in ("interim", "final"):
         raise ValueError("preset must be 'interim' or 'final'")
@@ -40,8 +48,7 @@ def render_report(results: dict, preset: str = "interim",
         table_year = table_year or results.get("table_year")
         results = results.get("totals") or results.get("combined") or {}
     if not assumptions:
-        from ..engine.price import price_assumption
-        assumptions = [price_assumption("constant", table_year)]
+        assumptions = [{"code": "price_basis_unknown", "message": missing_price_message(table_year)}]
 
     lines: list[str] = []
     if title:

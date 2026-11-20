@@ -10,20 +10,21 @@ L52 = {"sector_code": "52", "amount_mw": 10_000, "vendor_in_region_share": 1.0}
 
 
 def _pb(res):
-    a = res["assumptions"][0]
-    assert a["code"] == "price_basis"
+    (a,) = [x for x in res["assumptions"] if x["code"] == "price_basis"]
     return a
 
 
 # --- golden (#17 6절) ------------------------------------------------------ #
-def test_golden_constant_default_unchanged():
-    res = server.rio_compute_effects(*JEJU, spending=[L52])
+def test_golden_constant_unchanged():
+    """price_basis="constant" reproduces the pre-#20 default exactly."""
+    res = server.rio_compute_effects(*JEJU, spending=[L52], price_basis="constant")
     t = res["totals"]
     assert round(t["production_in_region_mw"], 1) == 12406.9
     assert round(t["value_added_in_region_mw"], 1) == 6729.6
     assert round(t["employment_in_region_persons"], 2) == 158.31
     assert round(t["employment_out_region_persons"], 2) == 27.19
-    assert res["price_basis"] == "constant"
+    assert res["price_basis"] == {"basis": "constant", "method": "constant", "price_year": None}
+    assert res["assumptions"][0]["code"] == "price_basis"
     a = _pb(res)
     assert a["price_basis"] == "constant" and a["table_year"] == 2020
     assert a["message"] == ("금액을 2020년(표 기준연도) 불변가격으로 간주함 — 현재가 금액이면 "
@@ -62,7 +63,8 @@ def test_golden_nominal_without_deflator_is_none():
     assert t["employment_in_region_persons"] is None
     assert t["employment_out_region_persons"] is None
     assert round(t["production_in_region_mw"], 1) == 12406.9  # unaffected
-    assert any("디플레이터가 없는 줄이 1개" in w for w in res["warnings"])
+    assert any("price_year(금액의 가격연도)를 지정하지 않음" in w and "디플레이터가 없는 줄 1개" in w
+               for w in res["warnings"])
     assert res["lines"][0]["employment_in_region_persons"] is None
 
 
@@ -118,15 +120,15 @@ def test_invalid_price_basis_errors():
 
 
 def test_constant_with_deflator_warns_and_ignores():
-    res = server.rio_compute_effects(*JEJU, spending=[L52], deflator=1.17)
+    res = server.rio_compute_effects(*JEJU, spending=[L52], deflator=1.17, price_basis="constant")
     assert round(res["totals"]["employment_in_region_persons"], 2) == 158.31
-    assert any("price_basis=constant라 deflator를 적용하지 않음" in w for w in res["warnings"])
+    assert any("price_basis=constant라 deflator·price_year를 적용하지 않음" in w for w in res["warnings"])
 
 
 # --- event ------------------------------------------------------------------ #
 def test_event_constant_unchanged_and_reports_assumption():
     spec = {"policy_spending": [L52], "n_outsider": 1000}
-    res = server.rio_compute_event(*JEJU, event_spec=spec)
+    res = server.rio_compute_event(*JEJU, event_spec=spec, price_basis="constant")
     assert round(res["policy_expenditure"]["employment_in_region_persons"], 2) == 158.31
     assert _pb(res)["price_basis"] == "constant" and res["warnings"] == []
 
@@ -134,7 +136,8 @@ def test_event_constant_unchanged_and_reports_assumption():
 def test_event_nominal_channel_deflators():
     spec = {"policy_spending": [L52], "n_outsider": 1000,
             "policy_deflator": 1.17, "participant_deflator": 1.25}
-    base = server.rio_compute_event(*JEJU, event_spec={"policy_spending": [L52], "n_outsider": 1000})
+    base = server.rio_compute_event(*JEJU, event_spec={"policy_spending": [L52], "n_outsider": 1000},
+                                    price_basis="constant")
     res = server.rio_compute_event(*JEJU, event_spec=spec, price_basis="nominal")
     pol, part = res["policy_expenditure"], res["participant"]
     assert round(pol["employment_in_region_persons"], 2) == 135.30
@@ -152,7 +155,8 @@ def test_event_nominal_missing_participant_deflator():
     assert res["participant"]["employment_in_region_persons"] is None
     assert res["combined"]["employment_in_region_persons"] is None
     assert res["combined"]["production_in_region_mw"] is not None
-    assert any(w.startswith("[participant] price_basis=nominal") for w in res["warnings"])
+    assert any(w.startswith("[participant] price_year(금액의 가격연도)를 지정하지 않음")
+               for w in res["warnings"])
 
 
 def test_event_top_level_deflator_covers_all_channels():
@@ -173,8 +177,8 @@ def test_event_visitor_group_deflator_and_profile_year_warning():
     assert res["participant"]["employment_in_region_persons"] is None
     # survey-year profiles are named, never re-priced
     assert any("jeju_domestic_visitor" in w and "자동 환산하지 않음" in w for w in res["warnings"])
-    base = server.rio_compute_event(*JEJU, event_spec={"event_type": "forum_mice",
-                                                       "visitor_groups": groups})
+    base = server.rio_compute_event(*JEJU, price_basis="constant",
+                                    event_spec={"event_type": "forum_mice", "visitor_groups": groups})
     assert by["내국인"]["production_in_region_mw"] == base["participant_by_group"]["내국인"]["production_in_region_mw"]
     assert by["내국인"]["employment_in_region_persons"] == pytest.approx(
         base["participant_by_group"]["내국인"]["employment_in_region_persons"] / 1.1, abs=1e-3)
@@ -182,7 +186,8 @@ def test_event_visitor_group_deflator_and_profile_year_warning():
 
 # --- report ----------------------------------------------------------------- #
 def test_report_shows_assumptions():
-    res = server.rio_compute_effects(*JEJU, spending=[{"sector_code": "52", "amount_mw": 100}])
+    res = server.rio_compute_effects(*JEJU, spending=[{"sector_code": "52", "amount_mw": 100}],
+                                     price_basis="constant")
     md = server.rio_render_report(res["totals"], preset="final", assumptions=res["assumptions"])
     assert "- 가정: 금액을 2020년(표 기준연도) 불변가격으로 간주함" in md
     assert "- 가정: 역내 조달 비율을 지정하지 않아 100%로 가정함" in md
@@ -199,7 +204,8 @@ def test_report_nominal_none_employment_is_na():
 def test_report_default_assumption_without_input():
     md = server.rio_render_report({"production_in_region_mw": 1.0, "production_out_region_mw": 1.0},
                                   table_year=2020)
-    assert "- 가정: 금액을 2020년(표 기준연도) 불변가격으로 간주함" in md
+    assert "- 가정: 가격 기준 정보 없음(2020년 표, 계산 응답의 assumptions를 넘기지 않음)" in md
+    assert "불변가격" not in md  # constant is no longer the default (#20)
 
 
 def test_duplicate_group_labels_with_different_deflators_rejected():
@@ -253,5 +259,5 @@ def test_event_participant_deflator_always_single():
 
 
 def test_constant_has_no_single_flag():
-    res = server.rio_compute_effects(*JEJU, spending=[L52], deflator=1.17)
+    res = server.rio_compute_effects(*JEJU, spending=[L52], deflator=1.17, price_basis="constant")
     assert "single_deflator" not in _codes(res)

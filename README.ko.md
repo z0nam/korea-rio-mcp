@@ -47,8 +47,8 @@ Python 3.10 이상이 필요합니다. 제주 2020년 중분류(83부문) 계수
 | `rio_crosscheck_mapping` | 예산→부문 매핑표 점검(계수표에 없는 코드, 코드·금액 누락, 효과여부 N 비율, 조달비율 범위, line_id 중복, 예산 총액 차이) |
 | `rio_check_base_table_update` | 한국은행의 새 지역산업연관표 기준연도 확인 |
 | `rio_load_base_table` | 한국은행 워크북에서 계수 추출 + 캐시 |
-| `rio_compute_effects` | 부문 단위 지출에 대한 효과 계산(`price_basis` constant(기본)/nominal + `deflator` — 취업유발만 디플레이트, `assumptions`에 가격 기준 항상 표시, 매핑표 행을 그대로 입력, 효과여부 N 행은 제외해 `excluded_lines`로 보고, 계수표에 없는 코드는 `unmatched_sectors`·`warnings`로 보고, `strict=true`면 오류) |
-| `rio_compute_event` | 이벤트 통합 효과(정책+방문객 채널, 분리 유지) |
+| `rio_compute_effects` | 부문 단위 지출에 대한 효과 계산(`price_year` — 기본(`price_basis="nominal"`)은 내장 부문별 산출 디플레이터로 취업유발만 디플레이트, `price_year`가 없거나 2020–2025 밖이면 취업 None, 줄별·최상위 `deflator`가 우선, `price_basis="constant"`는 기존 분석 재현용, `assumptions`에 가격 기준 항상 표시, 매핑표 행을 그대로 입력, 효과여부 N 행은 제외해 `excluded_lines`로 보고, 계수표에 없는 코드는 `unmatched_sectors`·`warnings`로 보고, `strict=true`면 오류) |
+| `rio_compute_event` | 이벤트 통합 효과(정책+방문객 채널, 분리 유지. 채널별로 같은 `price_year`·디플레이터 규칙) |
 | `rio_render_report` | 표준 마크다운 효과표(`interim` / `final`) |
 
 프롬프트: `map_budget_to_sectors`, `documentation_standard` — 판단이 많이 필요한 단계
