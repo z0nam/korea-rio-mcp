@@ -1,0 +1,103 @@
+{
+ "StatisticSearch": {
+  "list_total_count": 6,
+  "row": [
+   {
+    "DATA_VALUE": "100",
+    "ITEM_CODE1": "510A",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "기타서비스",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "405Y007",
+    "STAT_NAME": "4.1.3. 총산출물가지수",
+    "TIME": "2020",
+    "UNIT_NAME": "2020=100",
+    "WGT": "15.359"
+   },
+   {
+    "DATA_VALUE": "101.86",
+    "ITEM_CODE1": "510A",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "기타서비스",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "405Y007",
+    "STAT_NAME": "4.1.3. 총산출물가지수",
+    "TIME": "2021",
+    "UNIT_NAME": "2020=100",
+    "WGT": "15.359"
+   },
+   {
+    "DATA_VALUE": "106.68",
+    "ITEM_CODE1": "510A",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "기타서비스",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "405Y007",
+    "STAT_NAME": "4.1.3. 총산출물가지수",
+    "TIME": "2022",
+    "UNIT_NAME": "2020=100",
+    "WGT": "15.359"
+   },
+   {
+    "DATA_VALUE": "113.74",
+    "ITEM_CODE1": "510A",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "기타서비스",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "405Y007",
+    "STAT_NAME": "4.1.3. 총산출물가지수",
+    "TIME": "2023",
+    "UNIT_NAME": "2020=100",
+    "WGT": "15.359"
+   },
+   {
+    "DATA_VALUE": "119.16",
+    "ITEM_CODE1": "510A",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "기타서비스",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "405Y007",
+    "STAT_NAME": "4.1.3. 총산출물가지수",
+    "TIME": "2024",
+    "UNIT_NAME": "2020=100",
+    "WGT": "15.359"
+   },
+   {
+    "DATA_VALUE": "123.14",
+    "ITEM_CODE1": "510A",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "기타서비스",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "405Y007",
+    "STAT_NAME": "4.1.3. 총산출물가지수",
+    "TIME": "2025",
+    "UNIT_NAME": "2020=100",
+    "WGT": "15.359"
+   }
+  ]
+ }
+}
