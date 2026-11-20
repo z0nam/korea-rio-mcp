@@ -57,7 +57,7 @@ def test_compute_effects_strict_raises(coef):
 
 
 def test_tool_compute_effects_reports_unmatched():
-    res = server.rio_compute_effects(*JEJU[:2], spending=[
+    res = server.rio_compute_effects(*JEJU[:2], price_basis="constant", spending=[
         {"sector_code": "80", "amount_mw": 100.0},
         {"sector_code": "99", "amount_mw": 50.0, "vendor_in_region_share": 0.5},
     ])
@@ -69,19 +69,19 @@ def test_tool_compute_effects_reports_unmatched():
 
 
 def test_tool_compute_effects_clean_has_empty_lists():
-    res = server.rio_compute_effects(*JEJU[:2], spending=[
+    res = server.rio_compute_effects(*JEJU[:2], price_basis="constant", spending=[
         {"sector_code": "80", "amount_mw": 1.0, "vendor_in_region_share": 1.0}])
     assert res["unmatched_sectors"] == [] and res["warnings"] == []
 
 
 def test_tool_compute_effects_strict():
     with pytest.raises(UnmatchedSectorError):
-        server.rio_compute_effects(*JEJU[:2], spending=[{"sector_code": "99", "amount_mw": 1.0}],
+        server.rio_compute_effects(*JEJU[:2], price_basis="constant", spending=[{"sector_code": "99", "amount_mw": 1.0}],
                                    strict=True)
 
 
 def test_tool_compute_event_tags_channel():
-    res = server.rio_compute_event(*JEJU[:2], event_spec={
+    res = server.rio_compute_event(*JEJU[:2], price_basis="constant", event_spec={
         "policy_spending": [{"sector_code": "77", "amount_mw": 10.0},
                             {"sector_code": "999", "amount_mw": 5.0}],
         "n_outsider": 1000,
@@ -93,13 +93,13 @@ def test_tool_compute_event_tags_channel():
 
 
 def test_tool_compute_event_default_stay_is_clean():
-    res = server.rio_compute_event(*JEJU[:2], event_spec={"n_outsider": 1000})
+    res = server.rio_compute_event(*JEJU[:2], price_basis="constant", event_spec={"n_outsider": 1000})
     assert res["unmatched_sectors"] == []
 
 
 def test_tool_compute_event_strict():
     with pytest.raises(UnmatchedSectorError):
-        server.rio_compute_event(*JEJU[:2], event_spec={
+        server.rio_compute_event(*JEJU[:2], price_basis="constant", event_spec={
             "policy_spending": [{"sector_code": "999", "amount_mw": 5.0}]}, strict=True)
 
 

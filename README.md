@@ -50,8 +50,8 @@ table is bundled, so effect computation works out of the box.
 | `rio_crosscheck_mapping` | Check a budget→sector mapping table (unknown codes, missing codes/amounts, effect_yn N share, share range, duplicate line_id, budget gap) |
 | `rio_check_base_table_update` | Check BOK for a newer regional IO base year |
 | `rio_load_base_table` | Extract + cache coefficients from a BOK workbook |
-| `rio_compute_effects` | Effects for sector-level spending lines (`price_basis` constant (default) / nominal + `deflator` — employment-only deflation; `assumptions` always states the price basis; takes mapping-table rows as-is; `effect_yn` N rows excluded → `excluded_lines`; reports `unmatched_sectors`/`warnings`; `strict=true` errors instead) |
-| `rio_compute_event` | Combined event effect (policy + visitor channels, kept separate) |
+| `rio_compute_effects` | Effects for sector-level spending lines (`price_year` — employment-only deflation with the bundled sector output deflators by default (`price_basis="nominal"`); without `price_year` or for a year outside 2020–2025, employment is None; line/top-level `deflator` override; `price_basis="constant"` reproduces earlier analyses; `assumptions` always states the price basis; takes mapping-table rows as-is; `effect_yn` N rows excluded → `excluded_lines`; reports `unmatched_sectors`/`warnings`; `strict=true` errors instead) |
+| `rio_compute_event` | Combined event effect (policy + visitor channels, kept separate; same `price_year` / deflator rules per channel) |
 | `rio_render_report` | Standardized markdown effect table (`interim` / `final`) |
 
 Prompts: `map_budget_to_sectors`, `documentation_standard` — the judgment-heavy steps
