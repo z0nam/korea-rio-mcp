@@ -1,0 +1,103 @@
+{
+ "StatisticSearch": {
+  "list_total_count": 6,
+  "row": [
+   {
+    "DATA_VALUE": "100",
+    "ITEM_CODE1": "1112",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "의료, 보건업 및 사회복지서비스업",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y111",
+    "STAT_NAME": "2.1.2.4.1. 경제활동별 국내총생산 디플레이터(분기 및 연간)",
+    "TIME": "2020",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "101.753",
+    "ITEM_CODE1": "1112",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "의료, 보건업 및 사회복지서비스업",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y111",
+    "STAT_NAME": "2.1.2.4.1. 경제활동별 국내총생산 디플레이터(분기 및 연간)",
+    "TIME": "2021",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "103.575",
+    "ITEM_CODE1": "1112",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "의료, 보건업 및 사회복지서비스업",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y111",
+    "STAT_NAME": "2.1.2.4.1. 경제활동별 국내총생산 디플레이터(분기 및 연간)",
+    "TIME": "2022",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "105.759",
+    "ITEM_CODE1": "1112",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "의료, 보건업 및 사회복지서비스업",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y111",
+    "STAT_NAME": "2.1.2.4.1. 경제활동별 국내총생산 디플레이터(분기 및 연간)",
+    "TIME": "2023",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "107.681",
+    "ITEM_CODE1": "1112",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "의료, 보건업 및 사회복지서비스업",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y111",
+    "STAT_NAME": "2.1.2.4.1. 경제활동별 국내총생산 디플레이터(분기 및 연간)",
+    "TIME": "2024",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "108.913",
+    "ITEM_CODE1": "1112",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "의료, 보건업 및 사회복지서비스업",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y111",
+    "STAT_NAME": "2.1.2.4.1. 경제활동별 국내총생산 디플레이터(분기 및 연간)",
+    "TIME": "2025",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   }
+  ]
+ }
+}

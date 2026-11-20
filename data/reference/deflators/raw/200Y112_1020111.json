@@ -1,0 +1,103 @@
+{
+ "StatisticSearch": {
+  "list_total_count": 6,
+  "row": [
+   {
+    "DATA_VALUE": "100",
+    "ITEM_CODE1": "1020111",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "건설투자",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y112",
+    "STAT_NAME": "2.1.2.4.2. 국내총생산에 대한 지출 디플레이터(분기 및 연간)",
+    "TIME": "2020",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "108.632",
+    "ITEM_CODE1": "1020111",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "건설투자",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y112",
+    "STAT_NAME": "2.1.2.4.2. 국내총생산에 대한 지출 디플레이터(분기 및 연간)",
+    "TIME": "2021",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "117.127",
+    "ITEM_CODE1": "1020111",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "건설투자",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y112",
+    "STAT_NAME": "2.1.2.4.2. 국내총생산에 대한 지출 디플레이터(분기 및 연간)",
+    "TIME": "2022",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "120.433",
+    "ITEM_CODE1": "1020111",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "건설투자",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y112",
+    "STAT_NAME": "2.1.2.4.2. 국내총생산에 대한 지출 디플레이터(분기 및 연간)",
+    "TIME": "2023",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "122.055",
+    "ITEM_CODE1": "1020111",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "건설투자",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y112",
+    "STAT_NAME": "2.1.2.4.2. 국내총생산에 대한 지출 디플레이터(분기 및 연간)",
+    "TIME": "2024",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   },
+   {
+    "DATA_VALUE": "122.87",
+    "ITEM_CODE1": "1020111",
+    "ITEM_CODE2": null,
+    "ITEM_CODE3": null,
+    "ITEM_CODE4": null,
+    "ITEM_NAME1": "건설투자",
+    "ITEM_NAME2": null,
+    "ITEM_NAME3": null,
+    "ITEM_NAME4": null,
+    "STAT_CODE": "200Y112",
+    "STAT_NAME": "2.1.2.4.2. 국내총생산에 대한 지출 디플레이터(분기 및 연간)",
+    "TIME": "2025",
+    "UNIT_NAME": "2020=100",
+    "WGT": null
+   }
+  ]
+ }
+}
